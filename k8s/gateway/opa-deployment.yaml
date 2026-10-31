@@ -32,7 +32,14 @@ spec:
             - "--set=plugins.envoy_ext_authz_grpc.addr=:9191"
             - "--set=plugins.envoy_ext_authz_grpc.path=envoy/authz/result"
             - "--set=decision_logs.console=true"
-            - "/policy"
+            # Point at the single file, not the mounted directory --
+            # ConfigMap volumes expose each key through a `..data` symlink
+            # directory plus a top-level symlink of the same name into it;
+            # `opa run /policy` (directory) walks both paths to the same
+            # inode and loads authz.rego twice under different module
+            # paths, which OPA then rejects: "rego_type_error: multiple
+            # default rules data.envoy.authz.result found". Confirmed live.
+            - "/policy/authz.rego"
           ports:
             - containerPort: 9191
               name: grpc
