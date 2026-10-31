@@ -31,3 +31,11 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # Same large-CRD issue as cloudnative-pg-operator/kyverno-controller
+      # -- specifically httproutes.gateway.networking.k8s.io, the largest
+      # of the Gateway API CRDs this chart installs, confirmed missing
+      # from the cluster after a sync that otherwise succeeded for every
+      # smaller CRD. See that Application's syncOptions comment for the
+      # full explanation (argoproj/argo-cd#28421).
+      - ServerSideApply=true
+      - Replace=true
