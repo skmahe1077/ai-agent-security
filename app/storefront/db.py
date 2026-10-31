@@ -1,5 +1,4 @@
 """Storefront's own DB access -- catalog browsing and order display only.
-Ported unchanged from the Vault talk (this module never touched Vault).
 
 The storefront reads with a single pooled connection using DATABASE_URL (a
 normal app credential, not part of the identity story). It never issues

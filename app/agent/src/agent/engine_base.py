@@ -1,6 +1,6 @@
-"""Shared result type and interface for the two interchangeable engines.
-Ported unchanged from the Vault talk -- this layer never touched Vault or
-SPIFFE and doesn't need to change now either.
+"""Shared result type and interface for the two interchangeable engines --
+this layer never touches identity or credentials directly, just the
+chat-turn contract both engines produce.
 """
 from __future__ import annotations
 

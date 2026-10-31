@@ -2,9 +2,9 @@
 # to the Workload API directly -- the Python `spiffe` library is 0.x with no
 # official JWT-SVID example, too much risk on a live-demo critical path.
 #
-# jwt_audience is "gateway", not "vault" -- this one word is the entire
-# Vault coupling this demo inherited and removed. Envoy Gateway's
-# SecurityPolicy validates this exact `aud` claim.
+# jwt_audience is "gateway" -- Envoy Gateway's SecurityPolicy validates
+# this exact `aud` claim, so an SVID minted for any other audience is
+# refused.
 apiVersion: v1
 kind: ConfigMap
 metadata:

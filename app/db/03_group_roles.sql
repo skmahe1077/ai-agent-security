@@ -17,8 +17,7 @@ BEGIN
         CREATE ROLE mahi_refund_grp NOLOGIN;
     END IF;
     -- PII escalation target for beat 4's "what if a mistake widens this
-    -- role's privilege" test -- mirrors the old Vault demo's
-    -- customer-pii-reader. Never granted to either agent role except
+    -- role's privilege" test. Never granted to either agent role except
     -- during the deliberate, Git-committed misconfiguration beat 4 shows
     -- and then reverts.
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'mahi_pii_grp') THEN

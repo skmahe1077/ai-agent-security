@@ -469,11 +469,10 @@ h2:first-child { margin-top: 0; }
 /* connector between columns */
 /* Real connector lines (app.js's drawConnectors), card to card -- not one
    generic arrow per column gap. Identity's two agent cards each get their
-   own line into Vault, so the diagram shows both real registered agents
-   actually connecting to Authenticate. Sized to the full stage-graph
-   (not just the header lane, since lines run between cards at whatever
-   row each one sits in) and kept below the cards so lines appear to pass
-   behind them. */
+   own line into Gateway, so the diagram shows both real registered agents
+   actually connecting to it. Sized to the full stage-graph (not just the
+   header lane, since lines run between cards at whatever row each one
+   sits in) and kept below the cards so lines appear to pass behind them. */
 .connector-layer {
   position: absolute;
   top: 0; left: 0;

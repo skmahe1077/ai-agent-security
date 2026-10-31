@@ -97,8 +97,7 @@ def tools_issue_refund(
     # X-Approved-By is set by the agent only after a presenter clicks
     # Approve in the storefront's Control Room -- not cryptographically
     # verified. Recorded in the refunds row and in the response event for
-    # audit, same as the old Vault talk's `approved_by` field, minus the
-    # OBO signature that used to accompany it.
+    # audit.
     reply, events, status = actions.issue_refund(
         body.order_id, body.reason, body.requester_customer_id, spiffe_id, settings,
         body.issued_by, body.enforce_ownership, x_approved_by, body.correlation_id,

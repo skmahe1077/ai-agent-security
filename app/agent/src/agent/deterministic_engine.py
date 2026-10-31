@@ -1,10 +1,9 @@
-"""A regex-based stand-in for the LangChain agent -- ported from the Vault
-talk unchanged in spirit (same regex intent classifier, same pending/resume
-state machine), adapted to call `session.*` directly instead of a separate
-`actions` module (mahi-tools owns that logic now; the agent's session IS
-the action interface -- see session.py). Also adds a `scale_deployment`
-intent so the gateway is visibly guarding a real Kubernetes operation, not
-just application logic.
+"""A regex-based stand-in for the LangChain agent: a simple intent
+classifier plus a pending/resume state machine for approvals, calling
+`session.*` directly -- mahi-tools owns the actual business logic, so the
+agent's session IS the action interface (see session.py). Includes a
+`scale_deployment` intent so the gateway is visibly guarding a real
+Kubernetes operation, not just application logic.
 """
 from __future__ import annotations
 

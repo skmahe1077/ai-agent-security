@@ -18,9 +18,9 @@ output "argocd_portforward_command" {
 }
 
 output "argocd_namespace" {
-  # Deliberately a resource attribute, not the bare var the way the old
-  # repo's vault_k8s_namespace output had to be -- see that file's comment:
-  # Terraform only writes an output during a -target'ed apply if it's
-  # reachable from a targeted resource.
+  # Deliberately a resource attribute, not the bare var -- Terraform only
+  # writes an output during a -target'ed apply if it's reachable from a
+  # targeted resource; a pure-variable output has no such edge and
+  # silently never gets written until a full, untargeted apply succeeds.
   value = helm_release.argocd.namespace
 }

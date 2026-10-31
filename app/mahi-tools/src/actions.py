@@ -1,15 +1,13 @@
 """mahi-tools' actual business logic -- what runs once Envoy Gateway has
 verified the caller's JWT-SVID and OPA has decided this identity may call
-this path at all. Ported from the Vault talk's app/agent/src/agent/actions.py:
-same event-shape discipline (every function returns
-`(reply_text, events)`), same "PostgreSQL GRANTs are the real backstop, not
-an if-statement" pattern via `psycopg2.errors.InsufficientPrivilege`. What's
-gone: credential minting (there IS no per-request credential here, just a
-long-lived least-privilege login role selected by caller identity -- see
-db.py), and Vault OBO (approval evidence is now a plain X-Approved-By
+this path at all. Every function returns `(reply_text, events)`; PostgreSQL
+GRANTs are the real backstop, not an if-statement, enforced via
+`psycopg2.errors.InsufficientPrivilege`. There is no per-request credential
+to mint here -- just a long-lived least-privilege login role selected by
+caller identity (see db.py). Approval evidence is a plain X-Approved-By
 header the storefront sets only after a presenter clicks Approve -- not
-cryptographically verified, an honest simplification now that Vault is
-gone, same spirit as the old repo's own disclosed presenter-login shortcut).
+cryptographically verified, an honest simplification stated plainly rather
+than hidden (see docs/TALK-NOTES.md's "if asked" section).
 """
 from __future__ import annotations
 

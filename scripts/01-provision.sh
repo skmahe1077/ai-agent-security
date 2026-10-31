@@ -8,21 +8,16 @@
 # ${IMAGE_REGISTRY}/${IMAGE_TAG} placeholder that doesn't exist in Git
 # until this script's own build step runs).
 #
-# This is dramatically simpler than the inherited Vault talk's
-# provisioning script: dropping Vault also dropped the imperative
-# `vault operator init` step and the three-way `terraform apply` dance
-# that existed only to make room for it. One targeted apply (EKS still
-# needs to exist before the kubernetes/helm providers can evaluate --
-# that part of the old constraint is unrelated to Vault and survives),
-# one full apply, done.
+# Just two `terraform apply`s: one targeted apply (EKS has to exist
+# before the kubernetes/helm providers can evaluate at all), one full
+# apply, done. Everything else is ArgoCD, not Terraform.
 #
 # NOT YET RUN END-TO-END AGAINST A LIVE CLUSTER as of this writing --
 # written carefully and cross-checked against the Helm charts
 # (`helm template`) and Rego (`opa eval`) during planning, but expect to
-# debug real issues on the first real run, the same way every phase of
-# the inherited Vault talk needed at least one real run before it worked
-# clean. Keep this comment's honesty intact if you fix something here --
-# add to docs/RUNBOOK.md's gotchas section instead of silently patching.
+# debug real issues on the first real run. Keep this comment's honesty
+# intact if you fix something here -- add to docs/RUNBOOK.md's gotchas
+# section instead of silently patching.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
@@ -42,10 +37,9 @@ fi
 
 log "Phase A -- AWS infra (VPC, EKS, IRSA roles) -- no helm/argocd resources yet"
 terraform -chdir="$TF_DIR" init
-# Same class of constraint the inherited Vault talk documented: the
-# kubernetes/helm Terraform providers (versions.tf) derive their config
-# from module.eks's outputs, unknown on an empty-state plan -- EKS has to
-# exist before those providers can be evaluated at all. gp2_default MUST
+# The kubernetes/helm Terraform providers (versions.tf) derive their
+# config from module.eks's outputs, unknown on an empty-state plan -- EKS
+# has to exist before those providers can be evaluated at all. gp2_default MUST
 # be in this phase too: SPIRE's and CloudNativePG's PVCs (both ArgoCD-
 # managed, synced in Phase C below) stay Pending forever without it.
 terraform -chdir="$TF_DIR" apply -auto-approve \
@@ -120,10 +114,9 @@ kubectl -n envoy-gateway-system rollout status "deployment/$PROXY_DEPLOY" --time
 
 log "Phase E -- build and push images"
 aws ecr get-login-password | docker login --username AWS --password-stdin "${IMAGE_REGISTRY%%/*}"
-# --platform linux/amd64 is NOT optional -- the inherited Vault talk hit
-# this repeatedly on Apple Silicon: a plain `docker build` produces an
-# arm64 image, which crashes every pod on these x86_64 EKS nodes with
-# "exec format error".
+# --platform linux/amd64 is NOT optional on Apple Silicon -- a plain
+# `docker build` produces an arm64 image, which crashes every pod on
+# these x86_64 EKS nodes with "exec format error".
 docker build --platform linux/amd64 -f "$REPO_ROOT/app/storefront/Dockerfile" -t "$IMAGE_REGISTRY/storefront:$IMAGE_TAG" "$REPO_ROOT"
 docker build --platform linux/amd64 -f "$REPO_ROOT/app/agent/Dockerfile" -t "$IMAGE_REGISTRY/agent:$IMAGE_TAG" "$REPO_ROOT"
 docker build --platform linux/amd64 -f "$REPO_ROOT/app/mahi-tools/Dockerfile" -t "$IMAGE_REGISTRY/mahi-tools:$IMAGE_TAG" "$REPO_ROOT"

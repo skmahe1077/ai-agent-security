@@ -136,7 +136,7 @@
         Support agent
         <select id="chat-agent-picker">
           <option value="insecure">Legacy (standing credential)</option>
-          <option value="secure" selected>Zero-trust (SPIFFE + Vault JIT)</option>
+          <option value="secure" selected>Zero-trust (SPIFFE + gateway + OPA)</option>
         </select>
       </label>
 
@@ -150,10 +150,8 @@
            This is NOT cryptographically verified -- the display name is
            forwarded to mahi-tools as a plain X-Approved-By header on the
            agent's retry (see app/agent/src/agent/session.py) and recorded
-           in the refunds row for audit, which is a real but honestly
-           weaker guarantee than the Vault-OBO delegation this demo's
-           predecessor built. Identity and policy -- SPIFFE, Envoy
-           Gateway, OPA -- are the parts of this demo that are
+           in the refunds row for audit. Identity and policy -- SPIFFE,
+           Envoy Gateway, OPA -- are the parts of this demo that are
            cryptographically real; this one step is a recorded,
            audited convenience, said so plainly if asked. See app.js's
            refreshHumanToken(). -->

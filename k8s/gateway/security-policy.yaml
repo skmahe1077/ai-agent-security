@@ -27,10 +27,10 @@ spec:
           - gateway
         remoteJWKS:
           # Plain HTTP, matching the discovery provider's own tls.spire.enabled:
-          # false (k8s/spire/values.yaml) -- in-cluster traffic, torn down
-          # daily, same deliberate simplification the old Vault talk made for
-          # its own in-cluster traffic. `uri` alone (no backendRefs) is
-          # sufficient -- Envoy resolves the in-cluster Service by DNS; see
+          # false (k8s/spire/values.yaml) -- a deliberate simplification for
+          # in-cluster traffic on a demo cluster torn down daily, not a
+          # production posture. `uri` alone (no backendRefs) is sufficient
+          # -- Envoy resolves the in-cluster Service by DNS; see
           # RemoteJWKS's own doc comment ("If BackendRefs is not specified,
           # the URI field is used").
           uri: "http://spire-spiffe-oidc-discovery-provider.spire-mgmt.svc.cluster.local/keys"

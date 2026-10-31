@@ -12,11 +12,11 @@ spec:
   # `_secure_routing` are in-process module state. A second replica would
   # serve a different event history and could route the same thread's
   # follow-up message to a different backend, depending on which pod the
-  # ALB landed on. (This is also the Deployment beat 3's scale_deployment
-  # tool call scales up/down -- going above 1 briefly breaks that
-  # assumption for the duration of the demo, same as the old talk's own
-  # single-replica constraint, just now a visible live demo instead of an
-  # invisible invariant.)
+  # ALB landed on. (This is also the exact Deployment beat 3's
+  # scale_deployment tool call scales up/down -- going above 1 briefly
+  # breaks that assumption for the duration of the demo, a visible
+  # consequence of the same single-replica constraint rather than an
+  # invisible one.)
   replicas: 1
   selector:
     matchLabels:

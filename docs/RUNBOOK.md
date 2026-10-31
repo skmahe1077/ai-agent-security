@@ -6,15 +6,11 @@ search repo --versions`, `helm pull`, `opa eval` against real fixtures, the actu
 Envoy Gateway's CRDs, `jmespath` library tests for the Kyverno expressions) rather than assumed.
 But it has **not yet been run end-to-end against a live cluster**. Treat the "anticipated
 gotchas" section below as exactly that -- informed predictions, not confirmed war stories. When
-you hit a real one, move it into "confirmed gotchas" with the date and what actually happened,
-the same discipline the predecessor Vault talk's RUNBOOK kept throughout its own three
-from-scratch provisioning runs.
+you hit a real one, move it into "confirmed gotchas" with the date and what actually happened.
 
 ## Provisioning order, and why it's still phased
 
-Dropping Vault removed the single biggest reason the predecessor demo needed multiple
-`terraform apply`s: there is no imperative root-token step here, so Terraform collapses from
-three applies to two. The remaining split exists for an unrelated, still-real reason: the
+Terraform only needs two applies, not one, for a specific reason: the
 `kubernetes`/`helm` Terraform providers (`terraform/versions.tf`) derive their configuration from
 `module.eks`'s outputs, which don't exist on an empty-state plan. EKS has to exist before those
 providers can be evaluated at all -- Phase A targets just `module.vpc`/`module.eks`/
@@ -36,16 +32,16 @@ resource. Reordering this is the single most likely way a fresh provision breaks
 confusing to debug (CloudNativePG will just silently skip the bootstrap SQL if the ConfigMap
 didn't exist at creation time, not error loudly).
 
-## Confirmed gotchas (carried over from the predecessor talk -- still apply)
+## Known EKS/Terraform gotchas (fixes already applied here)
 
-Infrastructure-layer findings that have nothing to do with Vault and were confirmed the hard way
-on that talk's real EKS cluster:
+Infrastructure-layer findings that are well-documented failure modes of this exact
+module/addon combination -- the fixes are already applied in this repo's Terraform, not
+something to rediscover on a fresh provision:
 
 1. **EKS addon ordering deadlock.** `bootstrap_self_managed_addons = false` means nodes get no
    default networking at all until `vpc-cni`/`kube-proxy` install -- but the EKS Terraform
    module's default addon ordering waits for the node group to succeed FIRST. Fixed by marking
-   `vpc-cni`/`kube-proxy` `before_compute = true` in `terraform/eks.tf` -- already applied here,
-   not something to rediscover.
+   `vpc-cni`/`kube-proxy` `before_compute = true` in `terraform/eks.tf`.
 2. **`gp2` is not actually the EKS cluster-default StorageClass**, despite shipping on every
    cluster. Any PVC without an explicit `storageClassName` (SPIRE's, CloudNativePG's) hangs
    `Pending` forever without the `kubernetes_annotations.gp2_default` resource in
@@ -55,9 +51,9 @@ on that talk's real EKS cluster:
    or every pod crashes with "exec format error." Already in `scripts/01-provision.sh`.
 4. **`spiffe-helper` versions before 0.12.2 have a concurrent-map-write crash** in daemon mode
    with JWT SVIDs -- exactly this configuration. Pinned to `0.12.2` in both agent manifests.
-5. **Teardown hazards** -- see `scripts/destroy.sh`'s own header comment; ported essentially
-   unchanged (ALB/Ingress ordering, StatefulSet PVCs not deleted by Helm uninstall, PVC deletion
-   not meaning the EBS volume is gone yet).
+5. **Teardown hazards** -- see `scripts/destroy.sh`'s own header comment (ALB/Ingress ordering,
+   StatefulSet PVCs not deleted by Helm uninstall, PVC deletion not meaning the EBS volume is
+   gone yet).
 
 ## Anticipated gotchas (not yet confirmed live -- watch for these first)
 
@@ -127,8 +123,7 @@ Beyond the script, worth doing by hand at least once per rehearsal:
 
 eu-west-1, on-demand: EKS control plane ~$0.10/hr + 3× `t3.large` ~$0.25/hr + single NAT gateway
 ~$0.048/hr + ALB ~$0.025/hr + EBS (SPIRE + CloudNativePG PVCs) ~$0.003/hr ≈ **$0.43/hr ≈ $10/day**.
-No KMS key anywhere in this stack (Vault's auto-unseal key is gone along with Vault) -- no 7-day
-pending-deletion tail to remember after teardown, unlike the predecessor talk.
+No KMS key anywhere in this stack -- no 7-day pending-deletion tail to remember after teardown.
 
 ## Teardown
 

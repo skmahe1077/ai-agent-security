@@ -19,8 +19,7 @@ it once `scripts/01-provision.sh` has bootstrapped ArgoCD itself.
 - `k8s/mahi-tools/rbac.yaml` (no deploy-time values -- safe to sync as-is)
 
 **Deliberately NOT ArgoCD-managed** -- applied directly by
-`scripts/01-provision.sh` via `envsubst | kubectl apply -f -`, the exact
-same discipline the inherited Vault talk used throughout, and never
+`scripts/01-provision.sh` via `envsubst | kubectl apply -f -`, and never
 committed to Git in their substituted form:
 - Every Secret in this repo (`db-static-creds`, `agent-order-db-creds`,
   `agent-refund-db-creds` in both namespaces, `storefront-db-creds`,

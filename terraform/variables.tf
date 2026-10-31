@@ -28,7 +28,7 @@ variable "kubernetes_version" {
 }
 
 variable "eks_node_instance_type" {
-  description = "3x t3.large, not the old talk's 2x t3.medium: this stack runs Envoy Gateway + OPA + Kyverno + ArgoCD + CloudNativePG + SPIRE in addition to the app tier."
+  description = "This stack runs Envoy Gateway + OPA + Kyverno + ArgoCD + CloudNativePG + SPIRE in addition to the app tier -- t3.large, not a smaller instance type."
   type        = string
   default     = "t3.large"
 }

@@ -1,8 +1,8 @@
-"""Replaces the Vault talk's vault.py. Two implementations of the same
-duck-typed interface (`begin_turn`, `identity_event`, `lookup_order`,
-`issue_refund`, `lookup_customer_pii`, `scale_deployment`, `status`),
-selected once at startup by `build_session(settings)` -- the SAME one
-swap point the old repo's `build_session` was.
+"""Two implementations of the same duck-typed interface (`begin_turn`,
+`identity_event`, `lookup_order`, `issue_refund`, `lookup_customer_pii`,
+`scale_deployment`, `status`), selected once at startup by
+`build_session(settings)` -- the one swap point between the two identity
+models this demo contrasts.
 
 `GatewaySession` (secure mode) holds no database credential, ever. Its
 only material is the JWT-SVID spiffe-helper writes to disk -- it reads

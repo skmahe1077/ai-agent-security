@@ -4,13 +4,11 @@ One image, two running shapes: `AGENT_MODE=insecure` with a StaticDBSession,
 or `AGENT_MODE=secure` with a GatewaySession (see session.py). Which
 `Engine` implementation answers `/chat` is a separate axis (`AGENT_ENGINE`).
 
-Dropped from the Vault talk's server.py: `/vault/revoke`, `/vault/forget`,
-`/debug/ceiling-probe`. There is no per-request lease to revoke on demand
-any more -- revocation of an agent's database privilege is a Git commit
-against k8s/cnpg/cluster.yaml's spec.managed.roles, not an API call this
-process can make about itself. `subject_token` is gone from `/resume` too:
-no Vault OBO, so `approved_by` alone is the whole approval signal (plumbed
-through to mahi-tools as the X-Approved-By header -- see session.py).
+There is no per-request lease to revoke on demand -- revocation of an
+agent's database privilege is a Git commit against k8s/cnpg/cluster.yaml's
+spec.managed.roles, not an API call this process can make about itself.
+`approved_by` alone is the whole approval signal on `/resume`, plumbed
+through to mahi-tools as the X-Approved-By header -- see session.py.
 """
 from __future__ import annotations
 

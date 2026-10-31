@@ -4,12 +4,8 @@
 # ArgoCD installed down with it), the VPC. Run this after every
 # rehearsal.
 #
-# Ported from the inherited Vault talk's destroy.sh, which confirmed
-# these hazards the hard way (2026-10-18) -- three of its five still
-# apply exactly; the two that don't (a Vault resource that can't be
-# destroyed through its own API; a `vault_env` call needed before
-# `terraform destroy` can even refresh state) disappeared along with
-# Vault itself:
+# Three well-known AWS/Kubernetes teardown hazards, guarded against
+# explicitly rather than left to `terraform destroy` alone:
 #   1. The storefront Ingress must be deleted first so the AWS Load
 #      Balancer Controller deletes the ALB + target groups itself.
 #      Deleting the controller (which `terraform destroy` does) does NOT

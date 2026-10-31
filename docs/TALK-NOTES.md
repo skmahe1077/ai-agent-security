@@ -52,8 +52,8 @@ Switch the widget to `agent-secure`.
    `customers: ✗ denied`.
 4. Ask for another customer's order, or PII directly -- denied, and say why: *"this isn't an
    if-statement -- PostgreSQL itself has no grant for this role on `customers`."*
-5. **The money shot, reframed from the predecessor talk**: there is no lease to revoke on command
-   here, because there was never a separate credential behind the identity to begin with. Open the
+5. **The money shot**: there is no lease to revoke on command here, because there was never a
+   separate credential behind the identity to begin with. Open the
    Identity card -- the SVID countdown is already live. In a second terminal:
    `kubectl delete clusterspiffeid ai-order-agent`. **The line:** *"its identity itself expires --
    there is nothing standing to steal, and nothing left for anyone, including me, to separately
@@ -107,15 +107,13 @@ request shapes, two different outcomes -- that contrast is the whole lesson."*
 
 ## If asked: what's not real here
 
-Say these plainly, the same discipline the predecessor Vault talk kept -- a defensible
-simplification stated out loud is not a thing to hide:
+Say these plainly -- a defensible simplification stated out loud is not a thing to hide:
 
 - **The approval step's `X-Approved-By` header is not cryptographically verified.** No real IdP,
   no signed delegation token. What's upstream of it (SVID issuance, Envoy Gateway's JWT
   verification, OPA's policy decision) is all real; this one step is a recorded, audited
-  convenience, not a cryptographic guarantee. Dropping Vault dropped the one piece of this whole
-  system (RFC 8693 OBO delegation) that had no CNCF-landscape equivalent to replace it with --
-  said so rather than hidden.
+  convenience, not a cryptographic guarantee -- the one piece of the system with no
+  off-the-shelf CNCF-landscape equivalent to build it from, said so rather than hidden.
 - **"Task-scoped" means capability-and-lifetime-scoped, not row-scoped.** OPA's policy and
   Postgres's GRANTs both operate at the level of "which table/column," not "which specific row" --
   true row-level scoping would need PostgreSQL RLS driven by a session variable, not built here.

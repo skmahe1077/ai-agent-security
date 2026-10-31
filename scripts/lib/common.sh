@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-# Shared helpers, sourced by the other scripts/*.sh files.
-#
-# Ported from agentic-security-runtime-demo's scripts/lib/common.sh. Kept
-# verbatim: log/warn/die, tf_output, the storefront_url fallback-to-localhost
-# pattern. Dropped: vault_env/vault_root_token/vault_portforward_stop -- this
-# demo has no Vault, so there is no imperative root-token dance to read back.
+# Shared helpers, sourced by the other scripts/*.sh files: log/warn/die,
+# tf_output, and the storefront_url fallback-to-localhost pattern (so a
+# trimmed local stack keeps working unmodified for offline UI development).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -25,10 +22,9 @@ tf_output() {
   printf '%s' "$val"
 }
 
-# Generic port-forward-then-poll-then-trap helper, parameterized instead of
-# hardcoded to Vault the way the old repo's vault_env() was. Used to reach
-# OPA, the OIDC Discovery Provider, or anything else internal during
-# scripted verification.
+# Generic port-forward-then-poll-then-trap helper, parameterized so it
+# works for any in-cluster Service -- OPA, the OIDC Discovery Provider, or
+# anything else internal during scripted verification.
 PF_PID=""
 portforward_stop() { [ -n "${PF_PID:-}" ] && kill "$PF_PID" 2>/dev/null || true; }
 

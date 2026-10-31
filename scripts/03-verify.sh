@@ -3,10 +3,7 @@
 # freshly provisioned stack, and again the morning of the talk.
 #
 # Each check is independent and prints PASS/FAIL rather than stopping at
-# the first failure, so one failure doesn't hide the shape of the others
-# -- same harness as the inherited Vault talk's 03-verify.sh, which this
-# is a direct port of (replace Vault's checks with SPIRE/Gateway/OPA/
-# CloudNativePG's equivalents; the harness itself needed no changes).
+# the first failure, so one failure doesn't hide the shape of the others.
 set -uo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 

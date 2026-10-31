@@ -1,9 +1,7 @@
-"""Settings for the agent. Generic plumbing (agent_mode/agent_name/engine)
-is unchanged from the Vault talk. Everything Vault-named is gone: no
-vault_addr/vault_auth_mount/vault_role/vault_db_*, no obo_*. In their place:
-`gateway_url` (secure mode -- where mahi-tools lives, through Envoy
-Gateway) and the same `static_db_*` pair (insecure mode -- unchanged, still
-a plain long-lived password).
+"""Settings for the agent. `gateway_url` (secure mode -- where mahi-tools
+lives, through Envoy Gateway) is the only thing the secure identity needs
+to know about the outside world; `static_db_*` (insecure mode) is a plain
+long-lived password, deliberately the anti-pattern beat 1 exists to show.
 """
 from __future__ import annotations
 

@@ -35,9 +35,9 @@ module "eks" {
     }
   }
 
-  # 3x t3.large, not the old demo's 2x t3.medium: this stack runs Envoy
-  # Gateway + OPA + Kyverno + ArgoCD + CloudNativePG + SPIRE in addition to
-  # the app tier -- 2 small nodes were already tight before any of that.
+  # 3x t3.large: this stack runs Envoy Gateway + OPA + Kyverno + ArgoCD +
+  # CloudNativePG + SPIRE in addition to the app tier -- smaller nodes
+  # would already be tight before any of that.
   eks_managed_node_groups = {
     demo = {
       instance_types = [var.eks_node_instance_type]

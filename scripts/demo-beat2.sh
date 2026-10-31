@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # Beat 2 -- verified identity, no credential to steal. ~5 min on stage.
 #
-# The "money shot" here is structurally different from the inherited
-# Vault talk's: that demo could force an instant `sys/leases/revoke` on
-# command. There is no equivalent instant-kill here BY DESIGN -- the only
+# There is no instant-kill "revoke" button here BY DESIGN -- the only
 # thing standing in for a credential is the SVID itself, and SPIRE's own
 # renewal clock (not this script, not the storefront) is what controls
 # its lifetime. The honest version of this beat is slower but arguably

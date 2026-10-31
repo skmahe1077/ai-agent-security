@@ -1,20 +1,17 @@
 # Helm values for the `spire` chart from the spiffe/helm-charts-hardened
 # repo. Applied by ArgoCD (k8s/argocd/apps/spire.yaml), not by hand --
 # that Application pins spire-crds to 0.6.1 and spire to 0.30.4. Chart
-# version PINNED -- the old Vault-based talk left this unversioned ("helm
-# install spire spire --repo ...", no --version anywhere), flagged in that
-# repo's own infra notes as a real risk for a conference. Both versions
-# confirmed to exist via `helm search repo --versions` before being
-# written down here, not assumed.
+# version PINNED deliberately -- an unversioned `helm install` against a
+# chart repo is a real risk for a conference demo. Both versions confirmed
+# to exist via `helm search repo --versions` before being written down
+# here, not assumed.
 #
 # The chart bundles SPIRE Server, SPIRE Agent, the Controller Manager, the
-# SPIFFE CSI Driver, and the OIDC Discovery Provider. UNLIKE the old
-# Vault-based talk (which left the Discovery Provider installed but never
-# pointed anything at it, validating JWT-SVIDs against a static JWKS file
-# that went stale every ~24h instead), THIS demo actually uses it: Envoy
-# Gateway's SecurityPolicy fetches its remoteJWKS from
-# spire-spiffe-oidc-discovery-provider's Service (see k8s/gateway/), so keys
-# rotate automatically and there is no `refresh-bundle.sh` to re-run.
+# SPIFFE CSI Driver, and the OIDC Discovery Provider -- and this demo
+# actually uses the Discovery Provider: Envoy Gateway's SecurityPolicy
+# fetches its remoteJWKS from spire-spiffe-oidc-discovery-provider's
+# Service (see k8s/gateway/), so keys rotate automatically and there is no
+# static JWKS bundle to go stale or refresh.
 global:
   spire:
     clusterName: kubecon-agent-demo
@@ -77,12 +74,12 @@ spire-server:
               app: ai-order-agent
           jwtTTL: "300s"
 
-# Serve the discovery document and JWKS over plain HTTP inside the cluster,
-# not SPIRE-issued TLS -- mirrors the old talk's deliberate choice to run
-# in-cluster Vault traffic over tlsDisable=true. Correct for a demo torn
-# down daily; not for production. The chart fronts this with an nginx
-# sidecar on a fixed `http` port either way (see templates/deployment.yaml),
-# so Envoy Gateway's remoteJWKS backendRef just targets a plain Service.
+# Serve the discovery document and JWKS over plain HTTP inside the
+# cluster, not SPIRE-issued TLS -- a deliberate simplification for
+# in-cluster traffic on a demo torn down daily, not for production. The
+# chart fronts this with an nginx sidecar on a fixed `http` port either
+# way (see templates/deployment.yaml), so Envoy Gateway's remoteJWKS just
+# targets a plain Service.
 spiffe-oidc-discovery-provider:
   enabled: true
   tls:

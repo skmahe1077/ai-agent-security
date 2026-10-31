@@ -3,8 +3,7 @@
 Demo repo for the KubeCon + CloudNativeCon talk *"Who Let the Agent In? Securing Agentic AI with
 Non-Human Identity in Cloud Native Infrastructure."* A small retail site, **Mahi Stores**, with an
 AI support agent, shown as a live public website the audience watches on screen
-(presenter-driven, audience doesn't browse it themselves) -- same staging discipline as the
-talk's predecessor (TEC-2728), different architecture entirely.
+(presenter-driven, audience doesn't browse it themselves).
 
 **The pattern this demo proves out**: move from *trusted* agents to *verified* agents, with no
 standing access to cloud native infrastructure. Two AI agent identities (`order-agent`,
@@ -53,15 +52,16 @@ database privilege, admission control -- the parts this talk is actually about) 
 directly by the provisioning script (Secrets; the handful of Deployments carrying an image tag
 that doesn't exist in Git until the build that produces it runs).
 
-## What's reused from the predecessor talk, and what's new
+## What's in the stack
 
-This demo's **application** (storefront + chat UI + the two agent identities' business logic) is
-substantially reused from `agentic-security-runtime-demo` (TEC-2728, the Vault-based predecessor)
--- the scenario, customers, catalog, and the Control Room-style "Agentic Workflow" panel all carry
-over almost unchanged. What's entirely new is the **security layer underneath it**: Vault is gone;
-SPIRE, Envoy Gateway, OPA, Kyverno, CloudNativePG, and ArgoCD replace it, plus a brand-new
-`mahi-tools` service and a real Kubernetes operation (`scale_deployment`) so the gateway is
-visibly guarding the cluster, not just application logic.
+The **application** -- storefront, chat UI, the two agent identities' business logic, the
+Control Room-style "Agentic Workflow" panel -- is a small retail scenario purpose-built to make
+the security story visible: two genuinely separate agent identities (read-only `order-agent` and
+money-moving `refund-agent`), a legacy anti-pattern agent for contrast, and a real Kubernetes
+operation (`scale_deployment`) alongside the refund flow so the gateway is visibly guarding the
+cluster, not just application logic. The **security layer** underneath it is entirely CNCF
+landscape: SPIRE, Envoy Gateway, OPA, Kyverno, CloudNativePG, and ArgoCD, plus a purpose-built
+`mahi-tools` service that holds the only standing credentials in the system.
 
 ## Prerequisites
 

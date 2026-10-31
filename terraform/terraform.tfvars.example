@@ -1,8 +1,6 @@
 # Copy to terraform.tfvars if you want to override any default -- but note
-# that EVERY variable in variables.tf already has a default. Unlike the old
-# Vault-based talk (which required a Vault Enterprise license secret before
-# the first apply), this stack needs ZERO required tfvars: dropping Vault
-# dropped the one out-of-band prerequisite along with it.
+# that EVERY variable in variables.tf already has a default. This stack
+# needs ZERO required tfvars.
 #
 # Never commit the real file -- it's already in .gitignore.
 

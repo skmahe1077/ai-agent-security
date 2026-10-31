@@ -10,12 +10,11 @@ UI renders it in the "Agentic Workflow" panel -- deliberately a plain
 polled JSON state rather than an SSE stream, so there is nothing to
 silently disconnect on stage.
 
-Ported from the Vault talk. Dropped: `/api/admin/revoke` (no Vault lease to
-force-expire -- identity itself expires, see beat 2), `/api/admin/
-ceiling-test` and `/api/admin/forget` (no Vault Agent Registry ceiling or
-cached client to drop), and `subject_token` plumbing on resume (no Vault
-OBO -- `approved_by` alone is the whole signal now, forwarded to mahi-tools
-as a plain header; see app/agent/src/agent/session.py).
+There is no `/api/admin/revoke` endpoint -- there is no lease to force-expire,
+identity itself expires (see beat 2) -- and no ceiling-probe or forget
+endpoints, since there is no registry ceiling or cached client to drop.
+Approval is a plain `approved_by` signal, forwarded to mahi-tools as a
+header; see app/agent/src/agent/session.py.
 """
 from __future__ import annotations
 

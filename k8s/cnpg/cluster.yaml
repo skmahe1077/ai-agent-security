@@ -1,6 +1,6 @@
-# CloudNativePG Cluster -- replaces the old talk's AWS RDS instance.
-# Single instance, not HA: this is a torn-down-daily rehearsal cluster, the
-# same reasoning the old repo's Vault StatefulSet (1 replica, Raft) used.
+# CloudNativePG Cluster -- the Postgres instance backing Mahi Stores.
+# Single instance, not HA: this is a torn-down-daily rehearsal cluster,
+# not a production deployment.
 #
 # The 5 SQL files in app/db/ are applied once, in order, right after the
 # database is created, via postInitApplicationSQLRefs -- see

@@ -397,11 +397,10 @@ $("approve-btn").addEventListener("click", async () => {
 // beat 4's two live demonstrations (widen a Postgres role in Git and
 // watch OPA still deny; kubectl apply a non-compliant pod and watch
 // Kyverno reject it) are both presenter-terminal/kubectl actions, not UI
-// buttons here -- unlike the old Vault talk's ceiling-probe button, there
-// is no safe "probe with what you already have" equivalent: OPA's
-// decision depends only on SPIFFE identity and request shape, never on
-// live Postgres privilege, so a button here would have nothing real to
-// click.
+// buttons here -- there is no safe "probe with what you already have"
+// button to build instead: OPA's decision depends only on SPIFFE identity
+// and request shape, never on live Postgres privilege, so a button here
+// would have nothing real to click.
 
 function resetFlowState() {
   state.identity = null;
@@ -476,8 +475,7 @@ function _identityCardIdFor(spiffeId) {
   return "legacy-agent"; // no spiffe_id -- the static-password agent
 }
 
-// "denied" is now a THREE-way-routed type (unlike the old single-stage
-// Vault/Postgres split): resource "identity" means Envoy Gateway's own
+// "denied" is a THREE-way-routed type: resource "identity" means Envoy Gateway's own
 // JWT check refused the request (never reached OPA); resource "policy"
 // means OPA's extAuth refused it (never reached mahi-tools); anything else
 // (products/orders/refunds/customers/deployments/scale) means mahi-tools'

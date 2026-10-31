@@ -1,5 +1,4 @@
--- Demo data for Mahi Stores. Ported unchanged from the Vault-based talk --
--- the scenario, customers, catalog and order numbering are identical.
+-- Demo data for Mahi Stores.
 --
 -- order #1042 (Idhazhini, headphones, £89) is beat 1's refund.
 -- order #1045 (Idhazhini, charger x2, £64) is beat 2's refund -- deliberately
