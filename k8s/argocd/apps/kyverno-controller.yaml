@@ -11,15 +11,6 @@ spec:
     repoURL: https://kyverno.github.io/kyverno/
     chart: kyverno
     targetRevision: 3.9.2
-    helm:
-      # Same fix as cloudnative-pg-operator.yaml -- ServerSideApply=true +
-      # Replace=true below do NOT stop ArgoCD's dry-run from client-side-
-      # applying these CRDs first; confirmed live, repeatedly, on this exact
-      # chart. skipCrds stops ArgoCD rendering the CRDs via Helm at all. The
-      # CRDs are applied once, out-of-band, via `helm template --include-crds
-      # | kubectl apply --server-side --force-conflicts` -- see
-      # docs/RUNBOOK.md.
-      skipCrds: true
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno
@@ -29,11 +20,14 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      # Same large-CRD issue as cloudnative-pg-operator -- Kyverno's own
-      # CRDs (clusterpolicies.kyverno.io, policies.kyverno.io, etc.) also
-      # exceed the 262144-byte annotation limit under client-side apply,
-      # and ServerSideApply alone doesn't bypass it on this ArgoCD version
-      # due to argoproj/argo-cd#28421's dry-run regression. See that
-      # Application's syncOptions comment for the full explanation.
       - ServerSideApply=true
       - Replace=true
+  # Same large-CRD issue as cloudnative-pg-operator.yaml, same fix -- see
+  # that Application's ignoreDifferences comment for the full explanation
+  # (ServerSideApply/Replace don't help; skipCrds doesn't help either,
+  # since these CRDs aren't in Helm's special crds/ directory).
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /metadata/annotations
