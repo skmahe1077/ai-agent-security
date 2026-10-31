@@ -20,3 +20,11 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # Same large-CRD issue as cloudnative-pg-operator -- Kyverno's own
+      # CRDs (clusterpolicies.kyverno.io, policies.kyverno.io, etc.) also
+      # exceed the 262144-byte annotation limit under client-side apply,
+      # and ServerSideApply alone doesn't bypass it on this ArgoCD version
+      # due to argoproj/argo-cd#28421's dry-run regression. See that
+      # Application's syncOptions comment for the full explanation.
+      - ServerSideApply=true
+      - Replace=true

@@ -8,14 +8,18 @@ metadata:
 spec:
   project: default
   source:
-    # Registry root in repoURL + chart name as its own field -- confirmed
-    # live: ArgoCD rejects an OCI source with the whole chart path folded
-    # into repoURL and no explicit `chart`, even though `helm pull
-    # oci://docker.io/envoyproxy/gateway-helm` on that full path works
-    # fine standalone ("spec.source.repoURL and either spec.source.path
-    # or spec.source.chart are required").
-    repoURL: oci://docker.io/envoyproxy
-    chart: gateway-helm
+    # Bare registry hostname in repoURL (NO oci:// prefix), full path
+    # folded into `chart` -- confirmed live, the hard way: an `oci://`-
+    # prefixed repoURL makes ArgoCD's revision/digest-resolution step
+    # (separate from the actual chart-pull path) send an UNAUTHENTICATED
+    # HEAD request for the digest, which Docker Hub refuses with 401 even
+    # for a fully public chart (confirmed empirically: the identical
+    # request succeeds once a bearer token is attached). This is a known
+    # ArgoCD bug (argoproj/argo-cd#25513) specific to the oci:// prefix in
+    # repoURL -- the maintainer-confirmed fix is to omit the prefix
+    # entirely and move the registry path into `chart` instead.
+    repoURL: docker.io
+    chart: envoyproxy/gateway-helm
     targetRevision: 1.9.3
     helm: {}
   destination:
