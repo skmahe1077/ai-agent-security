@@ -30,7 +30,15 @@ check "spire-agent DaemonSet ready" bash -c '
   n=$(kubectl -n spire-mgmt get daemonset spire-agent -o jsonpath="{.status.numberReady}")
   [ -n "$n" ] && [ "$n" -gt 0 ]
 '
-check "both ClusterSPIFFEIDs registered" bash -c 'kubectl get clusterspiffeid ai-order-agent ai-support-agent-secure >/dev/null'
+check "both ClusterSPIFFEIDs registered" bash -c '
+  # The spire chart prefixes each clusterSPIFFEIDs.* key from
+  # k8s/spire/values.yaml with "<namespace>-<releaseName>-" (confirmed
+  # live: spire-mgmt-spire-ai-order-agent, not ai-order-agent) -- match on
+  # the stable key-name suffix rather than assuming the bare key is the
+  # resource name.
+  n=$(kubectl get clusterspiffeid -o name | grep -cE "(ai-order-agent|ai-support-agent-secure)$")
+  [ "$n" -eq 2 ]
+'
 
 log "2. the OIDC Discovery Provider -- what Envoy Gateway's SecurityPolicy trusts"
 check "JWKS endpoint reachable" bash -c '
@@ -49,7 +57,14 @@ check "mahi-gateway-stable Service resolves to the proxy pods" bash -c '
   kubectl -n envoy-gateway-system get endpoints mahi-gateway-stable -o jsonpath="{.subsets[0].addresses[0].ip}" | grep -qE "^[0-9]"
 '
 check "an unauthenticated call to the gateway is refused (no SVID at all)" bash -c '
-  kubectl run -n agents verify-noauth --rm -i --restart=Never --image=curlimages/curl:8.11.0 --command -- \
+  # -n default, not -n agents -- Kyverno'"'"'s require-spiffe-identity and
+  # require-nonroot policies apply to agents/nimbus and reject a bare
+  # curl pod with no SPIFFE CSI volume outright (confirmed live: the
+  # admission webhook denies it before this test ever runs). The Service
+  # FQDN is reachable cluster-wide regardless of the caller'"'"'s namespace,
+  # so default avoids that admission check while still exercising the
+  # real gateway path.
+  kubectl run -n default verify-noauth --rm -i --restart=Never --image=curlimages/curl:8.11.0 --command -- \
     curl -s -o /dev/null -w "%{http_code}" http://mahi-gateway-stable.envoy-gateway-system.svc.cluster.local:8080/tools/lookup_order \
     -X POST -H "Content-Type: application/json" -d "{}" | grep -qE "^(401|403)$"
 '
