@@ -22,6 +22,24 @@ tf_output() {
   printf '%s' "$val"
 }
 
+# Polls until a resource EXISTS -- not until it's ready. Needed before
+# `kubectl rollout status` / `kubectl wait --for=condition=...`, both of
+# which error immediately with NotFound if the resource doesn't exist
+# yet rather than waiting for it to appear. Confirmed the hard way on the
+# first live provisioning run: ArgoCD needs real time to clone this repo
+# and sync before anything it manages (SPIRE, CloudNativePG, Kyverno,
+# Envoy Gateway) exists at all, and `set -euo pipefail` turned that gap
+# into an immediate script abort.
+wait_for_resource() {
+  local kind="$1" name="$2" ns="$3" timeout="${4:-180}"
+  local i=0
+  until kubectl -n "$ns" get "$kind" "$name" >/dev/null 2>&1; do
+    i=$((i+1))
+    [ "$i" -lt "$timeout" ] || die "$kind/$name never appeared in namespace $ns within ${timeout}s -- check 'kubectl -n argocd get applications' for a sync error"
+    sleep 1
+  done
+}
+
 # Generic port-forward-then-poll-then-trap helper, parameterized so it
 # works for any in-cluster Service -- OPA, the OIDC Discovery Provider, or
 # anything else internal during scripted verification.

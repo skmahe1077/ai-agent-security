@@ -18,3 +18,7 @@ __pycache__/
 
 # OS noise
 .DS_Store
+
+# Claude Code local session/runtime state -- not project content
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

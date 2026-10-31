@@ -8,12 +8,14 @@ metadata:
 spec:
   project: default
   source:
-    # Full oci:// form -- the chart name is the final path segment of
-    # repoURL itself, not a separate `chart:` field (that form is only for
-    # Helm repos registered WITHOUT the oci:// scheme). Confirmed via
-    # `helm pull oci://docker.io/envoyproxy/gateway-helm --version 1.9.3`
-    # succeeding against this exact path during planning.
-    repoURL: oci://docker.io/envoyproxy/gateway-helm
+    # Registry root in repoURL + chart name as its own field -- confirmed
+    # live: ArgoCD rejects an OCI source with the whole chart path folded
+    # into repoURL and no explicit `chart`, even though `helm pull
+    # oci://docker.io/envoyproxy/gateway-helm` on that full path works
+    # fine standalone ("spec.source.repoURL and either spec.source.path
+    # or spec.source.chart are required").
+    repoURL: oci://docker.io/envoyproxy
+    chart: gateway-helm
     targetRevision: 1.9.3
     helm: {}
   destination:

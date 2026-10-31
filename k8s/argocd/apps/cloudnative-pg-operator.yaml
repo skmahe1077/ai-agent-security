@@ -20,3 +20,10 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # Confirmed live: CloudNativePG's own CRDs (clusters.postgresql.cnpg.io,
+      # poolers.postgresql.cnpg.io) are large enough that client-side
+      # apply's kubectl.kubernetes.io/last-applied-configuration annotation
+      # (which embeds the entire resource as JSON) exceeds Kubernetes'
+      # 262144-byte annotation-value limit outright -- "metadata.annotations:
+      # Too long". Server-side apply never writes that annotation.
+      - ServerSideApply=true

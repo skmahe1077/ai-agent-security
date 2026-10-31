@@ -91,13 +91,23 @@ kubectl -n argocd rollout restart deployment/argocd-repo-server
 kubectl -n argocd rollout status deployment/argocd-repo-server --timeout=120s
 
 log "waiting for the controllers ArgoCD just installed (SPIRE, CloudNativePG, Kyverno, Envoy Gateway) -- can take several minutes on a cold cluster"
+# wait_for_resource first on every one of these -- ArgoCD needs real time
+# to clone this repo and sync before any of these resources exist at all,
+# and rollout status/wait both error immediately on NotFound rather than
+# waiting for a resource to appear.
+wait_for_resource statefulset spire-server spire-mgmt 300
 kubectl -n spire-mgmt rollout status statefulset/spire-server --timeout=300s
+wait_for_resource daemonset spire-agent spire-mgmt 60
 kubectl -n spire-mgmt rollout status daemonset/spire-agent --timeout=300s
+wait_for_resource deployment cnpg-cloudnative-pg cnpg-system 300
 kubectl -n cnpg-system rollout status deployment/cnpg-cloudnative-pg --timeout=300s
+wait_for_resource deployment kyverno-admission-controller kyverno 300
 kubectl -n kyverno rollout status deployment/kyverno-admission-controller --timeout=300s
+wait_for_resource deployment envoy-gateway envoy-gateway-system 300
 kubectl -n envoy-gateway-system rollout status deployment/envoy-gateway --timeout=300s
 
 log "waiting for the CloudNativePG cluster to finish bootstrapping (runs app/db/*.sql exactly once)"
+wait_for_resource cluster mahistores-db data 60
 kubectl -n data wait --for=condition=Ready cluster/mahistores-db --timeout=300s
 
 log "waiting for Envoy Gateway's actual proxy Deployment (created by the Gateway resource, not the controller itself)"

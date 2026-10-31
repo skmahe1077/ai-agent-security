@@ -37,6 +37,18 @@ global:
       organization: "Mahi Stores Demo"
       commonName: "mahistores.demo"
   openshift: false
+  # The chart's own documented fix for exactly this situation: ArgoCD
+  # renders this chart via `helm template`, not `helm install`/`helm
+  # upgrade`, so it has no concept of "first install" vs "upgrade" --
+  # every sync runs ALL hooks, including this chart's pre-upgrade-only
+  # hook that tries to patch a ValidatingWebhookConfiguration which
+  # doesn't exist yet on a fresh install. Confirmed live: that hook job
+  # looped on "not found" and blocked the rest of the chart's resources
+  # from ever being created. The chart's own values.yaml documents this
+  # flag as "should be disabled when using `helm template`" -- which is
+  # precisely ArgoCD's rendering model.
+  installAndUpgradeHooks:
+    enabled: false
 
 spire-server:
   controllerManager:
