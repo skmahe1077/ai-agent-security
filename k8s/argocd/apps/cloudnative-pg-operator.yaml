@@ -44,3 +44,12 @@ spec:
       kind: CustomResourceDefinition
       jsonPointers:
         - /metadata/annotations
+        # Kubernetes itself defaults spec.conversion.strategy to "None" on
+        # any v1 CRD that doesn't declare one -- this chart's controller-gen
+        # output doesn't set it, so the live object always carries a field
+        # the desired manifest never had. Confirmed live: this chart's
+        # clusters/poolers CRDs are otherwise byte-identical (full spec hash
+        # match) once this field is excluded, but ArgoCD still attempted a
+        # patch (hitting the annotation-size bug) over this one defaulted
+        # field alone until it was added here too.
+        - /spec/conversion
