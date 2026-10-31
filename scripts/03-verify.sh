@@ -64,9 +64,14 @@ check "an unauthenticated call to the gateway is refused (no SVID at all)" bash 
   # FQDN is reachable cluster-wide regardless of the caller'"'"'s namespace,
   # so default avoids that admission check while still exercising the
   # real gateway path.
+  # `kubectl run --rm` appends `pod "..." deleted` to stdout on the same
+  # line as the command'"'"'s own output, with no separating newline
+  # (confirmed live: captured output was literally "403pod \"...\"
+  # deleted") -- anchor only at the start, not end-of-line, or this always
+  # fails regardless of the real status code.
   kubectl run -n default verify-noauth --rm -i --restart=Never --image=curlimages/curl:8.11.0 --command -- \
     curl -s -o /dev/null -w "%{http_code}" http://mahi-gateway-stable.envoy-gateway-system.svc.cluster.local:8080/tools/lookup_order \
-    -X POST -H "Content-Type: application/json" -d "{}" | grep -qE "^(401|403)$"
+    -X POST -H "Content-Type: application/json" -d "{}" | grep -qE "^(401|403)"
 '
 
 log "4. CloudNativePG cluster is Ready and the two agent login roles exist"
