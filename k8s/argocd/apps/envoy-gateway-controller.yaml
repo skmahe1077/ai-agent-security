@@ -33,11 +33,7 @@ spec:
       - ServerSideApply=true
       - Replace=true
   # Same large-CRD issue as cloudnative-pg-operator.yaml, same fix -- see
-  # that Application's ignoreDifferences comment for the full explanation.
+  # that Application's comment for the full explanation. Resolved cluster-
+  # wide via k8s/argocd/argocd-cm-patch.yaml's resource.exclusions.
   # Specifically hits httproutes.gateway.networking.k8s.io, envoyproxies.
   # gateway.envoyproxy.io, and securitypolicies.gateway.envoyproxy.io.
-  ignoreDifferences:
-    - group: apiextensions.k8s.io
-      kind: CustomResourceDefinition
-      jsonPointers:
-        - /metadata/annotations

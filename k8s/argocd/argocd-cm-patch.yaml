@@ -11,5 +11,32 @@
 # policy/rego/authz.rego, which Kustomize's default sandboxing refuses --
 # this is the documented, standard ArgoCD fix (argocd-cm's own
 # `kustomize.buildOptions` key), not a workaround specific to this repo.
+#
+# resource.exclusions: confirmed live, repeatedly, that per-Application
+# `ignoreDifferences` on CustomResourceDefinition annotations/spec.conversion
+# does NOT stop ArgoCD's sync from failing on cloudnative-pg's and Envoy
+# Gateway's largest CRDs (clusters.postgresql.cnpg.io,
+# httproutes.gateway.networking.k8s.io, etc: "annotations: Too long: may not
+# be more than 262144 bytes"). ignoreDifferences only affects drift
+# *detection*; ArgoCD's sync/apply path still does a one-time bootstrap
+# client-side-apply (writing the full oversized last-applied-configuration
+# annotation) for any CustomResourceDefinition it doesn't yet recognize as
+# already ArgoCD-managed -- a real instance of the documented regression
+# argoproj/argo-cd#28421. resource.exclusions is the one mechanism that
+# actually works: it removes CustomResourceDefinition from ArgoCD's
+# rendering/diffing pipeline entirely, cluster-wide, so it's never attempted.
+# This is an acceptable trade-off for this demo: CRD schemas for every chart
+# here are applied once, out-of-band, via `helm template --include-crds |
+# kubectl apply --server-side --force-conflicts` (see docs/RUNBOOK.md), and
+# ArgoCD continues to manage every non-CRD resource (Deployments, RBAC,
+# webhooks, Gateways, Policies) normally -- CRD *schema* drift just isn't
+# part of what GitOps self-heal covers here.
 data:
   kustomize.buildOptions: "--load-restrictor LoadRestrictionsNone"
+  resource.exclusions: |
+    - apiGroups:
+        - apiextensions.k8s.io
+      kinds:
+        - CustomResourceDefinition
+      clusters:
+        - "*"

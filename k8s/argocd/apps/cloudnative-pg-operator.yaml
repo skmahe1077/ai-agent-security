@@ -22,34 +22,19 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
       - Replace=true
-  # Confirmed live, repeatedly: CloudNativePG's own CRDs
-  # (clusters.postgresql.cnpg.io, poolers.postgresql.cnpg.io) are large
-  # enough that the kubectl.kubernetes.io/last-applied-configuration
-  # annotation ArgoCD writes during its patch exceeds Kubernetes' own
-  # 262144-byte annotation limit outright -- "metadata.annotations: Too
-  # long". Neither ServerSideApply=true nor Replace=true above stop this --
-  # confirmed by repeated identical failures with both set. Helm's
-  # source.helm.skipCrds was also tried and had NO effect -- these CRDs
-  # ship as regular chart templates, not via Helm's special `crds/`
-  # directory, which is the only thing skipCrds controls. The actual fix:
-  # tell ArgoCD's diff engine to ignore CustomResourceDefinition annotations
-  # entirely, so it never attempts to write that oversized annotation. The
-  # CRDs' schemas (the only part that matters) are still applied once,
-  # out-of-band, via `helm template --include-crds | kubectl apply
-  # --server-side --force-conflicts` -- see docs/RUNBOOK.md -- and this
-  # Application manages every other resource (Deployment, RBAC, webhooks)
-  # normally.
-  ignoreDifferences:
-    - group: apiextensions.k8s.io
-      kind: CustomResourceDefinition
-      jsonPointers:
-        - /metadata/annotations
-        # Kubernetes itself defaults spec.conversion.strategy to "None" on
-        # any v1 CRD that doesn't declare one -- this chart's controller-gen
-        # output doesn't set it, so the live object always carries a field
-        # the desired manifest never had. Confirmed live: this chart's
-        # clusters/poolers CRDs are otherwise byte-identical (full spec hash
-        # match) once this field is excluded, but ArgoCD still attempted a
-        # patch (hitting the annotation-size bug) over this one defaulted
-        # field alone until it was added here too.
-        - /spec/conversion
+  # CloudNativePG's own CRDs (clusters.postgresql.cnpg.io,
+  # poolers.postgresql.cnpg.io) are large enough that ArgoCD's sync hits a
+  # real regression (argoproj/argo-cd#28421): it writes the full
+  # kubectl.kubernetes.io/last-applied-configuration annotation during a
+  # one-time bootstrap client-side-apply for any CRD it doesn't yet
+  # recognize as ArgoCD-managed, which exceeds Kubernetes' 262144-byte
+  # annotation limit outright. Confirmed, repeatedly, that NEITHER
+  # ServerSideApply=true/Replace=true above NOR a per-Application
+  # ignoreDifferences on the CRD's annotations/spec.conversion stop this --
+  # ignoreDifferences only affects drift *detection*, not this apply path.
+  # The actual fix is cluster-wide: k8s/argocd/argocd-cm-patch.yaml's
+  # `resource.exclusions` removes CustomResourceDefinition from ArgoCD's
+  # pipeline entirely. This Application still manages every other resource
+  # (Deployment, RBAC, webhooks) normally; the CRDs themselves are applied
+  # once, out-of-band, via `helm template --include-crds | kubectl apply
+  # --server-side --force-conflicts` -- see docs/RUNBOOK.md.
