@@ -1,0 +1,9 @@
+# Cluster-scoped. The controller itself (Envoy Gateway's control plane)
+# installs into envoy-gateway-system via Helm -- see scripts/01-provision.sh.
+# This GatewayClass is what k8s/gateway/gateway.yaml's Gateway references.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: eg
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller

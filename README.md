@@ -1,0 +1,109 @@
+# Who Let the Agent In?
+
+Demo repo for the KubeCon + CloudNativeCon talk *"Who Let the Agent In? Securing Agentic AI with
+Non-Human Identity in Cloud Native Infrastructure."* A small retail site, **Mahi Stores**, with an
+AI support agent, shown as a live public website the audience watches on screen
+(presenter-driven, audience doesn't browse it themselves) -- same staging discipline as the
+talk's predecessor (TEC-2728), different architecture entirely.
+
+**The pattern this demo proves out**: move from *trusted* agents to *verified* agents, with no
+standing access to cloud native infrastructure. Two AI agent identities (`order-agent`,
+`refund-agent`) never hold a database credential, a Kubernetes token with broad RBAC, or any
+long-lived secret of any kind. Every tool call they make is verified, policy-checked, and
+executed by something else on their behalf.
+
+## Architecture
+
+```
+audience → browser → ALB → storefront (ns nimbus)
+                               │ chat
+                               ▼
+                 agent pods (ns agents) -- order-agent │ refund-agent
+                 SPIRE JWT-SVID via spiffe-helper sidecar, 300s TTL
+                               │ HTTP POST /tools/<name>, Authorization: Bearer <JWT-SVID>
+                               ▼
+        ┌──────────────────────────────────────────────────────┐
+        │  Envoy Gateway  (Gateway API)   ── THE AGENT GATEWAY │
+        │  • SecurityPolicy.jwt: validate vs SPIRE's own JWKS  │
+        │    (remoteJWKS → SPIRE's OIDC Discovery Provider)    │
+        │  • SecurityPolicy.extAuth → OPA (ext_authz)          │
+        └──────────────────────────────────────────────────────┘
+                   │ only OPA-allowed tool calls pass
+                   ▼
+          mahi-tools HTTP service (ns agents)
+          lookup_order · issue_refund · lookup_customer_pii · scale_deployment
+                   │                               │
+                   ▼                               ▼
+      CloudNativePG cluster (ns data)        Kubernetes API
+      login roles via managed.roles,         own ServiceAccount, RBAC narrowed
+      GRANTs on group roles                  to apps/deployments/scale on one name
+
+  cross-cutting:  OPA (decisions + decision log) · Kyverno (admission)
+                  ArgoCD (everything in-cluster comes from Git) · SPIRE (identity)
+```
+
+Every component is **Apache 2.0, open source, and CNCF-governed** -- SPIRE/SPIFFE, Open Policy
+Agent, and Argo CD are CNCF graduated; Envoy (and Envoy Gateway, built on it) is CNCF graduated;
+Kyverno is CNCF incubating; CloudNativePG is CNCF Sandbox (incubation under review). No licence
+key, trial, or commercial tier anywhere in the stack -- the only non-OSS thing involved is AWS
+itself, and the entire in-cluster blueprint runs identically on kind/k3d.
+
+See `k8s/argocd/README.md` for exactly which parts of the system are GitOps-managed (policy,
+database privilege, admission control -- the parts this talk is actually about) versus applied
+directly by the provisioning script (Secrets; the handful of Deployments carrying an image tag
+that doesn't exist in Git until the build that produces it runs).
+
+## What's reused from the predecessor talk, and what's new
+
+This demo's **application** (storefront + chat UI + the two agent identities' business logic) is
+substantially reused from `agentic-security-runtime-demo` (TEC-2728, the Vault-based predecessor)
+-- the scenario, customers, catalog, and the Control Room-style "Agentic Workflow" panel all carry
+over almost unchanged. What's entirely new is the **security layer underneath it**: Vault is gone;
+SPIRE, Envoy Gateway, OPA, Kyverno, CloudNativePG, and ArgoCD replace it, plus a brand-new
+`mahi-tools` service and a real Kubernetes operation (`scale_deployment`) so the gateway is
+visibly guarding the cluster, not just application logic.
+
+## Prerequisites
+
+1. An AWS account with EKS/VPC/IAM/ECR permissions, authenticated in your shell (`aws sts
+   get-caller-identity` should succeed).
+2. This repo pushed to a real Git remote, with `${GIT_REPO_URL}` resolved to that remote's literal
+   clone URL everywhere it appears under `k8s/argocd/` -- a **one-time** step, not a per-run
+   variable (see `scripts/01-provision.sh`'s Phase 0 check, which refuses to run otherwise):
+   ```bash
+   grep -rl '${GIT_REPO_URL}' k8s/argocd | xargs sed -i '' "s|\${GIT_REPO_URL}|$(git remote get-url origin)|g"
+   git add k8s/argocd && git commit -m "set GIT_REPO_URL for ArgoCD" && git push
+   ```
+3. `terraform`, `kubectl`, `helm`, `docker`, `aws` CLIs on your PATH.
+4. An ECR repository (or any registry you can `docker push` to and the cluster can pull from).
+
+Then:
+```bash
+export IMAGE_REGISTRY=<your ECR repo URI>
+export LEGACY_DB_PASSWORD=<pick one -- becomes mahi_legacy's real password>
+export STOREFRONT_DB_PASSWORD=<pick one -- becomes mahi_storefront's real password>
+bash scripts/01-provision.sh
+```
+
+**This stack costs real money while it's up** (≈$0.43/hr -- see `docs/RUNBOOK.md`'s cost
+breakdown). Run `scripts/destroy.sh` after every rehearsal. `scripts/03-verify.sh` is the
+go/no-go gate -- run it after provisioning and again the morning of the talk.
+
+## The four beats
+
+1. **Standing access is the problem** -- the legacy agent, a static password, refunds a stranger's
+   order.
+2. **Verified identity, no credential to steal** -- the real agent has no secret at all, only a
+   SPIFFE identity that expires on its own.
+3. **Policy on every call, and human intent** -- a large refund and a cluster-scaling request both
+   pause for a human; approved or not, the gateway and OPA evaluate every single call.
+4. **The gateway catches what admission control can't** -- widen a database role in Git, OPA still
+   denies the call; deploy a non-compliant pod, Kyverno never lets it start.
+
+Full presenter notes, talking points, and the promise→mechanism table: `docs/TALK-NOTES.md`.
+
+## Docs
+
+- `docs/RUNBOOK.md` -- provisioning order, anticipated gotchas, verification checklist, teardown.
+- `docs/TALK-NOTES.md` -- the beats, what to say, what's real and what's an honest simplification.
+- `k8s/argocd/README.md` -- the GitOps boundary (what's in Git vs. applied directly).

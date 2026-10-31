@@ -1,0 +1,39 @@
+# mahi-tools' own Kubernetes identity for the scale_deployment tool --
+# NOT SPIFFE, a plain projected ServiceAccount token, auto-mounted by
+# Kubernetes. RBAC is narrowed with `resourceNames` to exactly one
+# Deployment: this ServiceAccount cannot scale, read, or touch anything
+# else in the cluster, including other namespaces' Deployments.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mahi-tools
+  namespace: agents
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mahi-tools-scaler
+  namespace: nimbus
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    resourceNames: ["storefront"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["storefront"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mahi-tools-scaler
+  namespace: nimbus
+subjects:
+  - kind: ServiceAccount
+    name: mahi-tools
+    namespace: agents
+roleRef:
+  kind: Role
+  name: mahi-tools-scaler
+  apiGroup: rbac.authorization.k8s.io

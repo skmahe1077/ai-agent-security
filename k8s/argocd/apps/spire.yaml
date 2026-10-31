@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spire
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  sources:
+    - repoURL: https://spiffe.github.io/helm-charts-hardened/
+      chart: spire
+      targetRevision: 0.30.4
+      helm:
+        valueFiles:
+          - $values/k8s/spire/values.yaml
+    - repoURL: https://github.com/skmahe1077/ai-agent-security.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: spire-mgmt
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

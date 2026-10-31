@@ -1,0 +1,72 @@
+# OPA -- the decision point Envoy Gateway's SecurityPolicy.extAuth calls
+# on every /tools/* request (k8s/gateway/security-policy.yaml). Policy
+# bundle comes from the `mahi-opa-policy` ConfigMap (policy/rego/, synced
+# here by ArgoCD -- see k8s/argocd/). Decision logs to stdout: that's
+# beat 3's audit evidence, read via `kubectl logs`.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa
+  namespace: agents
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opa
+  template:
+    metadata:
+      labels:
+        app: opa
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: opa
+          image: openpolicyagent/opa:1.22.0-envoy
+          args:
+            - "run"
+            - "--server"
+            - "--addr=0.0.0.0:8181"
+            - "--diagnostic-addr=0.0.0.0:8282"
+            - "--set=plugins.envoy_ext_authz_grpc.addr=:9191"
+            - "--set=plugins.envoy_ext_authz_grpc.path=envoy/authz/result"
+            - "--set=decision_logs.console=true"
+            - "/policy"
+          ports:
+            - containerPort: 9191
+              name: grpc
+            - containerPort: 8181
+              name: http
+            - containerPort: 8282
+              name: diagnostic
+          volumeMounts:
+            - name: policy
+              mountPath: /policy
+              readOnly: true
+          readinessProbe:
+            httpGet: { path: /health, port: 8282 }
+            initialDelaySeconds: 3
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 128Mi }
+      volumes:
+        - name: policy
+          configMap:
+            name: mahi-opa-policy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opa
+  namespace: agents
+spec:
+  selector:
+    app: opa
+  ports:
+    - name: grpc
+      port: 9191
+      targetPort: 9191
+    - name: http
+      port: 8181
+      targetPort: 8181

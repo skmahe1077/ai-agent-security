@@ -1,0 +1,15 @@
+# Not applied with `kubectl apply` -- `argocd-cm` is created by the Helm
+# release Terraform installs (terraform/alb.tf's helm_release.argocd), and
+# patching a Helm-owned ConfigMap via a second controller causes drift
+# fights. Applied instead via `kubectl patch configmap argocd-cm -n argocd
+# --type merge -p "$(cat k8s/argocd/argocd-cm-patch.yaml)"` in
+# scripts/01-provision.sh, same pattern as any other post-install Helm
+# values tweak.
+#
+# Needed for exactly one thing: k8s/gateway/kustomization.yaml's
+# configMapGenerator reaches outside its own directory into
+# policy/rego/authz.rego, which Kustomize's default sandboxing refuses --
+# this is the documented, standard ArgoCD fix (argocd-cm's own
+# `kustomize.buildOptions` key), not a workaround specific to this repo.
+data:
+  kustomize.buildOptions: "--load-restrictor LoadRestrictionsNone"

@@ -1,0 +1,27 @@
+# Generates the `mahi-opa-policy` ConfigMap directly from policy/rego/*.rego
+# -- that directory is the single source of truth for OPA's policy; this
+# is how a Git commit to a .rego file actually reaches the running OPA
+# instance (ArgoCD syncs this Kustomization, see k8s/argocd/apps/gateway.yaml).
+# `disableNameSuffixHash` keeps the ConfigMap's name stable across syncs --
+# with the default hash suffix, every policy edit would mint a new
+# ConfigMap name and require a rolling restart wiring, which is more
+# moving parts than this demo needs (OPA's own file watcher picks up a
+# changed mounted ConfigMap's content in place).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - gatewayclass.yaml
+  - gateway.yaml
+  - httproute.yaml
+  - security-policy.yaml
+  - opa-deployment.yaml
+  - stable-service.yaml
+
+configMapGenerator:
+  - name: mahi-opa-policy
+    namespace: agents
+    files:
+      - ../../policy/rego/authz.rego
+    options:
+      disableNameSuffixHash: true

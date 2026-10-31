@@ -1,0 +1,90 @@
+# Helm values for the `spire` chart from the spiffe/helm-charts-hardened
+# repo. Applied by ArgoCD (k8s/argocd/apps/spire.yaml), not by hand --
+# that Application pins spire-crds to 0.6.1 and spire to 0.30.4. Chart
+# version PINNED -- the old Vault-based talk left this unversioned ("helm
+# install spire spire --repo ...", no --version anywhere), flagged in that
+# repo's own infra notes as a real risk for a conference. Both versions
+# confirmed to exist via `helm search repo --versions` before being
+# written down here, not assumed.
+#
+# The chart bundles SPIRE Server, SPIRE Agent, the Controller Manager, the
+# SPIFFE CSI Driver, and the OIDC Discovery Provider. UNLIKE the old
+# Vault-based talk (which left the Discovery Provider installed but never
+# pointed anything at it, validating JWT-SVIDs against a static JWKS file
+# that went stale every ~24h instead), THIS demo actually uses it: Envoy
+# Gateway's SecurityPolicy fetches its remoteJWKS from
+# spire-spiffe-oidc-discovery-provider's Service (see k8s/gateway/), so keys
+# rotate automatically and there is no `refresh-bundle.sh` to re-run.
+global:
+  spire:
+    clusterName: kubecon-agent-demo
+    trustDomain: mahistores.demo
+    # Becomes BOTH the JWT-SVID `iss` claim SPIRE mints AND the `issuer`
+    # field the OIDC discovery document advertises -- Envoy Gateway's
+    # SecurityPolicy.spec.jwt.providers[].issuer must match this exactly.
+    jwtIssuer: "https://spire-spiffe-oidc-discovery-provider.spire-mgmt.svc.cluster.local"
+    recommendations:
+      enabled: true # wires up k8s_psat node attestor + k8s workload attestor with sane defaults
+      # recommendations.enabled defaults namespaceLayout to true, which
+      # splits server/agent across spire-server/spire-system namespaces.
+      # This repo's scripts and docs hardcode a single spire-mgmt
+      # namespace -- keep that assumption true.
+      namespaceLayout: false
+    namespaces:
+      create: true
+    # Required by the chart (no default) -- this demo's SPIRE CA isn't a
+    # real PKI trust anchor beyond the cluster's own lifetime (torn down
+    # daily), so these are just a fixed, demo-appropriate subject.
+    caSubject:
+      country: "US"
+      organization: "Mahi Stores Demo"
+      commonName: "mahistores.demo"
+  openshift: false
+
+spire-server:
+  controllerManager:
+    identities:
+      clusterSPIFFEIDs:
+        # refund-agent. Matches terraform/variables.tf's
+        # agent_namespace/agent_service_account defaults and
+        # policy/rego's per-path rules. If you change one, change all three.
+        ai-support-agent-secure:
+          namespaceSelector:
+            matchExpressions:
+              - key: "kubernetes.io/metadata.name"
+                operator: In
+                values: ["agents"]
+          podSelector:
+            matchLabels:
+              app: ai-support-agent-secure
+          # 5 minutes -- SPIRE's own default, left alone deliberately so
+          # the "short-lived credential" story is true by default rather
+          # than tuned to look good on stage.
+          jwtTTL: "300s"
+        # order-agent -- a genuinely separate identity, same namespace.
+        # Matches terraform/variables.tf's order_agent_service_account. The
+        # namespace boundary already distinguishes nimbus/insecure from
+        # agents/secure; this podSelector is what distinguishes the two
+        # secure identities from each other within `agents`.
+        ai-order-agent:
+          namespaceSelector:
+            matchExpressions:
+              - key: "kubernetes.io/metadata.name"
+                operator: In
+                values: ["agents"]
+          podSelector:
+            matchLabels:
+              app: ai-order-agent
+          jwtTTL: "300s"
+
+# Serve the discovery document and JWKS over plain HTTP inside the cluster,
+# not SPIRE-issued TLS -- mirrors the old talk's deliberate choice to run
+# in-cluster Vault traffic over tlsDisable=true. Correct for a demo torn
+# down daily; not for production. The chart fronts this with an nginx
+# sidecar on a fixed `http` port either way (see templates/deployment.yaml),
+# so Envoy Gateway's remoteJWKS backendRef just targets a plain Service.
+spiffe-oidc-discovery-provider:
+  enabled: true
+  tls:
+    spire:
+      enabled: false

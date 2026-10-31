@@ -1,0 +1,708 @@
+/* Tokens follow the project's dataviz skill: fixed status palette
+   (good/warning/serious/critical), documented chrome/ink, theme-aware via
+   both prefers-color-scheme and an explicit [data-theme] override. */
+:root {
+  color-scheme: light;
+  --surface-1:      #fcfcfb;
+  --page-plane:     #f9f9f7;
+  --text-primary:   #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted:     #898781;
+  --gridline:       #e1e0d9;
+  --baseline:       #c3c2b7;
+  --border:         rgba(11,11,11,0.10);
+  --success-text:   #006300;
+
+  --status-good:     #0ca30c;
+  --status-warning:  #fab219;
+  --status-serious:  #ec835a;
+  --status-critical: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --success-text:   #0ca30c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-1:      #1a1a19;
+  --page-plane:     #0d0d0d;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #898781;
+  --gridline:       #2c2c2a;
+  --baseline:       #383835;
+  --border:         rgba(255,255,255,0.10);
+  --success-text:   #0ca30c;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page-plane);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.wordmark { font-size: 1.3rem; font-weight: 700; }
+.topbar-controls { display: flex; align-items: center; gap: 16px; }
+.field-inline { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-secondary); }
+select, input[type="text"] {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}
+
+.layout {
+  padding: 20px 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ---- tabs -------------------------------------------------------------
+   Only one of #tab-shop / #tab-flow is visible at a time (toggled via
+   .hidden by app.js's switchTab()) -- the Agentic Workflow tab is where the
+   demo-only customer/agent pickers live now, since a real shopper never
+   sees those. */
+.tab-switcher { display: flex; gap: 4px; background: var(--page-plane); border-radius: 8px; padding: 3px; }
+.tab-btn {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.tab-btn.active { background: var(--surface-1); color: var(--text-primary); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); }
+
+/* The Agentic Workflow tab is a wide, big-on-a-projector dashboard, not a
+   narrow stepper -- 5 stage columns need real estate, and this is the
+   panel shown live on stage. Matches the Shop tab's own container cap
+   (.layout's max-width) rather than a separate narrower one. */
+#tab-flow.panel { max-width: 1400px; margin: 0 auto; }
+
+.demo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+
+.order-history-wrap {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  overflow-x: auto;
+}
+.order-history-head {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.order-history { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.order-history th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  padding: 4px 10px 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.order-history td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.order-history tr:last-child td { border-bottom: none; }
+.order-status { text-transform: capitalize; }
+.order-status-refunded { color: var(--status-critical); }
+.order-status-shipped { color: var(--status-warning); }
+.order-status-delivered { color: var(--status-good); }
+
+h2 {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 24px 0 10px;
+}
+h2:first-child { margin-top: 0; }
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+.product-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.product-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+.product-image {
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--page-plane);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.product-image img { width: 100%; height: 100%; object-fit: cover; }
+.product-body { padding: 14px; }
+.product-card .name { font-weight: 600; margin-bottom: 4px; }
+.product-card .description {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin-bottom: 10px;
+  min-height: 2.8em;
+}
+.product-card .price { font-weight: 700; font-size: 1.05rem; }
+
+/* ---- floating chat widget ------------------------------------------- */
+
+.chat-launcher {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: none;
+  background: var(--text-primary);
+  color: var(--surface-1);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+.chat-launcher.hidden { display: none; }
+.chat-launcher-icon { font-size: 1.1rem; }
+
+.chat-widget {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  height: min(560px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+.chat-widget.hidden { display: none; }
+
+.chat-widget-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--page-plane);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.chat-widget-title { font-weight: 700; flex: 1; }
+.chat-icon-btn {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+.chat-icon-btn:hover { color: var(--text-primary); }
+
+.chat-widget-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.8rem;
+}
+.chat-meta-name { font-weight: 600; }
+.chat-meta-time { color: var(--text-muted); }
+
+.chat-customer-row { justify-content: flex-start; }
+.chat-customer-row select { font-size: 0.85rem; }
+
+.chat-log { display: flex; flex-direction: column; gap: 8px; }
+.chat-bubble { max-width: 85%; padding: 8px 12px; border-radius: 10px; font-size: 0.9rem; line-height: 1.4; }
+.chat-bubble.user { align-self: flex-end; background: var(--gridline); }
+.chat-bubble.agent { align-self: flex-start; background: color-mix(in srgb, var(--status-good) 12%, var(--surface-1)); border: 1px solid var(--border); }
+.chat-bubble.agent.denied { background: color-mix(in srgb, var(--status-critical) 14%, var(--surface-1)); }
+.chat-bubble.calling {
+  align-self: flex-start;
+  background: none;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 4px 12px;
+}
+
+/* Vertically stacked, right-aligned, outlined -- not filled pill chips. */
+.chat-suggestions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.chip {
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1.5px solid var(--text-primary);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.chip:hover { background: var(--gridline); }
+
+.chat-consent {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.chat-form input { flex: 1; }
+.chat-form input:disabled { opacity: 0.6; cursor: not-allowed; }
+.chat-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+.chat-form button, #approve-btn {
+  background: var(--text-primary);
+  color: var(--surface-1);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.btn-danger {
+  background: var(--status-critical);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.approval-card {
+  border: 1px solid var(--status-warning);
+  background: color-mix(in srgb, var(--status-warning) 14%, var(--surface-1));
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 12px;
+}
+.approval-card.hidden { display: none; }
+.approval-identity { font-size: 0.85rem; margin-top: 8px; }
+.approval-identity.ok { color: var(--status-good); }
+.approval-identity.alert { color: var(--status-critical); font-weight: 600; }
+.approval-row { display: flex; gap: 8px; margin-top: 8px; }
+.approval-row input { flex: 1; }
+.approval-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+.tile-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.tile-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  word-break: break-all;
+}
+.tile-sub { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
+.hidden { display: none; }
+
+.corr { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0 0 10px; font-size: 0.85rem; }
+.corr dt { color: var(--text-muted); }
+.corr dd { margin: 0; font-family: ui-monospace, monospace; word-break: break-all; }
+
+/* ---- Agentic Workflow panel: dark stage-column diagram -------------------
+   A pulse travels card-to-card as real events arrive (app.js's
+   playTurnAnimation) -- a paced replay of the actual event sequence, not
+   a live network capture (the backend returns all of a turn's events in
+   one response, not a stream). Clicking a card opens the same detail
+   drawer the earlier stepper used.
+
+   .flow-dark redefines the same custom properties the rest of the panel
+   already uses (--surface-1, --border, --text-*, --status-*, etc.) to a
+   fixed dark palette, scoped to this panel only -- .stage-detail, .corr,
+   .meter, .scope-list, .tag, .demo-controls etc. below need no changes of
+   their own, they just inherit the override through normal CSS cascade. */
+.flow-dark {
+  --surface-1:       #121a2e;
+  --page-plane:      #0a0e1a;
+  --border:          rgba(255, 255, 255, 0.08);
+  --gridline:        #1e2740;
+  --baseline:        #2a3454;
+  --text-primary:    #e8edf7;
+  --text-secondary:  #9aa6c3;
+  --text-muted:      #6b7794;
+  --status-good:     #2ee6a6;
+  --status-warning:  #f5b942;
+  --status-serious:  #f5934e;
+  --status-critical: #f0556b;
+  --success-text:    #2ee6a6;
+  background: var(--page-plane);
+  color: var(--text-primary);
+  border-radius: 16px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.flow-dark-header { display: flex; align-items: center; }
+.flow-dark-title { font-weight: 700; font-size: 1.7rem; display: flex; align-items: center; gap: 10px; }
+.flow-live-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--status-good);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--status-good) 70%, transparent);
+  display: inline-block;
+}
+
+.stage-graph {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 18px;
+  /* Dedicated lane above the column headers for the bypass arc -- it must
+     never share vertical space with "N. Label" text (see
+     .bypass-arc-layer's matching height below). */
+  padding-top: 46px;
+}
+.stage-col {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* connector between columns */
+/* Real connector lines (app.js's drawConnectors), card to card -- not one
+   generic arrow per column gap. Identity's two agent cards each get their
+   own line into Vault, so the diagram shows both real registered agents
+   actually connecting to Authenticate. Sized to the full stage-graph
+   (not just the header lane, since lines run between cards at whatever
+   row each one sits in) and kept below the cards so lines appear to pass
+   behind them. */
+.connector-layer {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+.connector-line {
+  fill: none;
+  stroke: var(--baseline);
+  stroke-width: 1.5;
+}
+.connector-arrowhead-fill { fill: var(--baseline); }
+.stage-col-head { display: flex; align-items: center; gap: 8px; }
+.stage-col-num {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--gridline);
+  color: var(--text-muted);
+  font-size: 0.9rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.stage-col-label { font-weight: 600; font-size: 1.2rem; }
+/* Fills the rest of the column's height (grid rows stretch all columns
+   to match the tallest -- Identity's 2-card stack) and centers its
+   card(s) within it, so a column with one card lines up against the
+   vertical middle of Identity's stack instead of hugging the top. */
+.stage-col-cards { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+
+.flow-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1.5px solid var(--baseline);
+  background: var(--surface-1);
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.flow-card-icon { font-size: 1.9rem; line-height: 1; margin-top: 1px; }
+.flow-card-label { font-weight: 600; font-size: 1.2rem; }
+.flow-card-sub { font-size: 0.95rem; color: var(--text-muted); line-height: 1.4; word-break: break-word; margin-top: 4px; }
+.flow-card-tag {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-family: ui-monospace, monospace;
+  background: var(--gridline);
+  color: var(--text-secondary);
+}
+.flow-card-tag.hidden { display: none; }
+
+.flow-card.hidden { display: none; }
+.flow-card.open { box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-primary) 15%, transparent); }
+.flow-card.lit { border-color: var(--status-good); background: color-mix(in srgb, var(--status-good) 10%, var(--surface-1)); }
+/* a registered agent that's real but not the one handling this turn --
+   distinct from both "lit" (active) and the plain unlit default */
+.flow-card.registered { border-color: color-mix(in srgb, var(--status-good) 45%, var(--baseline)); }
+.flow-card.warning { border-color: var(--status-warning); background: color-mix(in srgb, var(--status-warning) 10%, var(--surface-1)); }
+.flow-card.critical { border-color: var(--status-critical); background: color-mix(in srgb, var(--status-critical) 10%, var(--surface-1)); }
+.flow-card.revoked { border-color: var(--baseline); background: var(--gridline); opacity: 0.7; }
+.flow-card.absent .flow-card-sub { font-style: italic; }
+.flow-card.pulse-hit { transform: scale(1.04); box-shadow: 0 0 10px color-mix(in srgb, var(--status-good) 50%, transparent); }
+
+.bypass-arc-layer {
+  position: absolute;
+  /* Lives entirely within .stage-graph's padding-top lane, above where
+     .stage-col-head starts -- never overlaps the "N. Label" row. */
+  top: 0; left: 0;
+  width: 100%; height: 40px;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+.bypass-arc-layer path {
+  fill: none;
+  stroke: var(--status-warning);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+.bypass-arc-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--status-warning);
+  white-space: nowrap;
+  z-index: 2;
+}
+.bypass-arc-layer.hidden, .bypass-arc-label.hidden { display: none; }
+
+.graph-pulse {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--status-good);
+  transform: translate(-50%, -50%);
+  transition: left 0.4s ease, top 0.4s ease;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--status-good) 60%, transparent);
+  z-index: 3;
+}
+
+.stage-detail {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+}
+.stage-detail-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 6px;
+}
+.stage-detail-label { font-weight: 700; font-size: 1.45rem; margin-bottom: 12px; padding-right: 24px; }
+.stage-detail-heading {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 12px 0 5px;
+}
+.stage-detail-heading:first-of-type { margin-top: 0; }
+.stage-detail-body { font-size: 1.05rem; line-height: 1.55; }
+.stage-detail-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tag {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--gridline);
+  color: var(--text-secondary);
+}
+.stage-detail-live {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--page-plane);
+  font-size: 0.85rem;
+  font-family: ui-monospace, monospace;
+}
+.stage-detail-log { list-style: none; margin: 0; padding: 0; font-size: 0.8rem; display: flex; flex-direction: column; gap: 4px; }
+.stage-detail-log li { display: flex; gap: 8px; color: var(--text-secondary); }
+.stage-detail-log time { color: var(--text-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.status-dot.good     { background: var(--status-good); }
+.status-dot.warning  { background: var(--status-warning); }
+.status-dot.serious  { background: var(--status-serious); }
+.status-dot.critical { background: var(--status-critical); }
+.status-dot.neutral  { background: var(--text-muted); }
+
+.meter {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--gridline);
+  overflow: hidden;
+  margin-top: 8px;
+}
+.meter-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--status-good);
+  transition: width 1s linear, background-color 0.3s;
+}
+.meter-fill.warning  { background: var(--status-warning); }
+.meter-fill.critical { background: var(--status-critical); }
+
+.scope-list { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; }
+.scope-list li { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+.scope-list li.denied { color: var(--status-critical); }
+.scope-list li.allowed { color: var(--success-text); }
+
+.event-stream-wrap {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: #05070f;
+}
+.event-stream-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+}
+.term-dot { width: 11px; height: 11px; border-radius: 50%; }
+.term-dot-red { background: #f0556b; }
+.term-dot-yellow { background: #f5b942; }
+.term-dot-green { background: #2ee6a6; }
+.event-stream-title {
+  margin-left: 6px;
+  font-size: 0.92rem;
+  font-family: ui-monospace, monospace;
+  color: var(--text-muted);
+}
+.event-stream {
+  list-style: none;
+  margin: 0;
+  padding: 16px;
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: auto;
+  font-size: 0.96rem;
+  font-family: ui-monospace, monospace;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.stream-line { display: flex; gap: 8px; align-items: baseline; white-space: nowrap; color: var(--text-secondary); }
+.stream-time { color: var(--text-muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.stream-actor { flex-shrink: 0; }
+.stream-actor-agent { color: #6fb8ff; }
+.stream-actor-gateway { color: var(--status-good); }
+.stream-actor-postgres { color: #c792ea; }
+.stream-line.good .stream-text { color: var(--status-good); }
+.stream-line.warning .stream-text { color: var(--status-warning); }
+.stream-line.critical .stream-text { color: var(--status-critical); }

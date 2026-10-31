@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: envoy-gateway-controller
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  project: default
+  source:
+    # Full oci:// form -- the chart name is the final path segment of
+    # repoURL itself, not a separate `chart:` field (that form is only for
+    # Helm repos registered WITHOUT the oci:// scheme). Confirmed via
+    # `helm pull oci://docker.io/envoyproxy/gateway-helm --version 1.9.3`
+    # succeeding against this exact path during planning.
+    repoURL: oci://docker.io/envoyproxy/gateway-helm
+    targetRevision: 1.9.3
+    helm: {}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: envoy-gateway-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

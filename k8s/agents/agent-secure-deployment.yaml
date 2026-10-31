@@ -1,0 +1,113 @@
+# refund-agent. Can look up orders AND issue refunds -- enforced by OPA
+# (policy/rego) plus, as the last line of defence, the Postgres GRANTs on
+# the role mahi-tools connects as (see k8s/cnpg/).
+#
+# No VAULT_*, no OBO_*, no DATABASE_* env vars, and no secret-backed
+# credential of any kind: this agent's ONLY credential is the JWT-SVID
+# spiffe-helper writes to /svids, 300s TTL, never touching a Kubernetes
+# Secret. It never talks to Postgres directly -- every action is an HTTP
+# call through Envoy Gateway to mahi-tools, with the SVID as the bearer
+# token on every request.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-secure
+  namespace: agents
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-support-agent-secure
+  template:
+    metadata:
+      # app label is load-bearing: SPIRE's ClusterSPIFFEID podSelector
+      # matches on it. Renaming it breaks identity issuance, not just
+      # scheduling.
+      labels:
+        app: ai-support-agent-secure
+    spec:
+      serviceAccountName: ai-support-agent-secure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        # fsGroup, not just runAsUser: the `svids` emptyDir is written by
+        # the spiffe-helper sidecar and read by the agent container --
+        # without a shared fsGroup, a non-root UID has no guarantee of
+        # write access to an emptyDir Kubernetes created for this pod.
+        fsGroup: 1000
+      containers:
+        - name: agent
+          image: ${IMAGE_REGISTRY}/agent:${IMAGE_TAG}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: AGENT_MODE
+              value: secure
+            - name: AGENT_NAME
+              value: support-agent-secure
+            - name: SVID_PATH
+              value: /svids/jwt_svid.token
+            - name: GATEWAY_URL
+              value: "http://mahi-gateway-stable.envoy-gateway-system.svc.cluster.local:8080"
+            - name: REFUND_APPROVAL_THRESHOLD_PENCE
+              value: "10000"
+            - name: AGENT_ENGINE
+              value: "${AGENT_ENGINE:-deterministic}"
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef: { name: anthropic-api-key, key: value, optional: true }
+          volumeMounts:
+            - name: svids
+              mountPath: /svids
+              readOnly: true
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8000 }
+            initialDelaySeconds: 3
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+
+        - name: spiffe-helper
+          # Pinned, not :latest. spiffe-helper#451 is a concurrent-map-write
+          # crash in daemon mode with JWT SVIDs -- this exact configuration.
+          # v0.12.2 is the first tag after the fix landed.
+          image: ghcr.io/spiffe/spiffe-helper:0.12.2
+          args: ["-config", "/etc/spiffe-helper/helper.conf"]
+          volumeMounts:
+            - name: spiffe-workload-api
+              mountPath: /spiffe-workload-api
+              readOnly: true
+            - name: svids
+              mountPath: /svids
+            - name: helper-config
+              mountPath: /etc/spiffe-helper
+              readOnly: true
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits: { cpu: 100m, memory: 64Mi }
+
+      volumes:
+        # No hostPath, no privileged pod -- the CSI driver bind-mounts the
+        # SPIRE Agent's Workload API socket read-only.
+        - name: spiffe-workload-api
+          csi:
+            driver: csi.spiffe.io
+            readOnly: true
+        - name: svids
+          emptyDir: {}
+        - name: helper-config
+          configMap:
+            name: spiffe-helper-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-secure
+  namespace: agents
+spec:
+  selector:
+    app: ai-support-agent-secure
+  ports:
+    - port: 8000
+      targetPort: 8000

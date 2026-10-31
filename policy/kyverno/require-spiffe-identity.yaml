@@ -1,0 +1,93 @@
+# beat 4's second deliberate mistake: `kubectl apply` an agent pod with no
+# SPIFFE volume and a plain-Secret DB password. This is what refuses it at
+# admission -- it never even starts, which is a stronger guarantee than
+# "the gateway would have denied its calls" (that pod might never call the
+# gateway at all, e.g. if it tried to talk to Postgres directly like
+# agent-insecure does).
+#
+# Scoped to the `agents` namespace only -- `nimbus` legitimately hosts
+# agent-insecure, which has neither of these by design (that's beat 1's
+# whole point). This policy would be actively wrong applied there.
+#
+# The two JMESPath expressions below were verified against both a
+# compliant and a violating pod fixture with the `jmespath` Python library
+# before being trusted here (`spec.volumes[?csi.driver=='csi.spiffe.io'] |
+# length(@)` and the env-name equivalent) -- the pipe stops before each
+# `length(@)` deliberately, so the filter runs on a concrete list rather
+# than chaining as a JMESPath projection, which does not reliably compose
+# with a trailing function call.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-spiffe-identity
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: require-spiffe-csi-volume
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["agents"]
+      exclude:
+        any:
+          # mahi-tools and opa are legitimate agents-namespace workloads
+          # with no SPIFFE identity of their own -- mahi-tools relies on
+          # the CALLER's identity (forwarded by the gateway), not its own,
+          # and OPA has none at all. Only pods fronting one of the two
+          # actual agent identities need the SPIFFE volume.
+          - resources:
+              kinds: ["Pod"]
+              selector:
+                matchExpressions:
+                  - { key: app, operator: In, values: ["mahi-tools", "opa"] }
+      context:
+        - name: spiffeVolumeCount
+          variable:
+            jmesPath: "request.object.spec.volumes[?csi.driver=='csi.spiffe.io'] | length(@)"
+            default: 0
+      validate:
+        message: >-
+          Pods in the `agents` namespace must mount the SPIFFE Workload API
+          socket via the csi.spiffe.io CSI driver. A pod with no SPIFFE
+          identity has no business running here -- that is what the
+          `nimbus` namespace (agent-insecure) is for, deliberately.
+        deny:
+          conditions:
+            all:
+              - key: "{{ spiffeVolumeCount }}"
+                operator: Equals
+                value: 0
+
+    - name: forbid-plaintext-db-secrets
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["agents"]
+      exclude:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              selector:
+                matchExpressions:
+                  - { key: app, operator: In, values: ["opa"] }
+      context:
+        - name: staticDbEnvCount
+          variable:
+            jmesPath: "request.object.spec.containers[].env[] | [?name=='STATIC_DB_PASSWORD' || name=='DATABASE_PASSWORD'] | length(@)"
+            default: 0
+      validate:
+        message: >-
+          Pods in the `agents` namespace must not define a
+          STATIC_DB_PASSWORD or DATABASE_PASSWORD environment variable.
+          The two agent identities hold no database credential of any
+          kind -- mahi-tools does, and its Secret references are the only
+          ones permitted in this namespace.
+        deny:
+          conditions:
+            all:
+              - key: "{{ staticDbEnvCount }}"
+                operator: GreaterThan
+                value: 0

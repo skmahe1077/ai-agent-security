@@ -1,0 +1,22 @@
+# The one thing applied by hand (scripts/01-provision.sh, one
+# `envsubst | kubectl apply -f -` for https://github.com/skmahe1077/ai-agent-security.git). Every other
+# Application in k8s/argocd/apps/ is then reconciled BY this one -- edit
+# that directory in Git and ArgoCD picks up the change itself.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-of-apps
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/skmahe1077/ai-agent-security.git
+    targetRevision: HEAD
+    path: k8s/argocd/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

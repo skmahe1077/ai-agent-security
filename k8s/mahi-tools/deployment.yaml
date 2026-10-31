@@ -1,0 +1,75 @@
+# mahi-tools -- the one service with a standing Postgres credential (two,
+# actually: agent_order_login and agent_refund_login, least-privileged,
+# declared in Git via k8s/cnpg/cluster.yaml's spec.managed.roles) and a
+# standing Kubernetes ServiceAccount token narrowed to one Deployment's
+# scale subresource (k8s/mahi-tools/rbac.yaml). Reachable ONLY through
+# Envoy Gateway -- see policy/kyverno/require-gateway-only.yaml's
+# NetworkPolicy requirement for this namespace.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mahi-tools
+  namespace: agents
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mahi-tools
+  template:
+    metadata:
+      labels:
+        app: mahi-tools
+    spec:
+      serviceAccountName: mahi-tools
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: mahi-tools
+          image: ${IMAGE_REGISTRY}/mahi-tools:${IMAGE_TAG}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DB_HOST
+              value: mahistores-db-rw.data.svc.cluster.local
+            - name: DB_NAME
+              value: mahistores
+            - name: ORDER_AGENT_SPIFFE_ID
+              value: "spiffe://mahistores.demo/ns/agents/sa/ai-order-agent"
+            - name: ORDER_DB_USER
+              value: agent_order_login
+            - name: ORDER_DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: agent-order-db-creds, key: password }
+            - name: REFUND_AGENT_SPIFFE_ID
+              value: "spiffe://mahistores.demo/ns/agents/sa/ai-support-agent-secure"
+            - name: REFUND_DB_USER
+              value: agent_refund_login
+            - name: REFUND_DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: agent-refund-db-creds, key: password }
+            - name: REFUND_APPROVAL_THRESHOLD_PENCE
+              value: "10000"
+            - name: SCALABLE_DEPLOYMENT_NAMESPACE
+              value: nimbus
+            - name: SCALABLE_DEPLOYMENT_NAME
+              value: storefront
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8000 }
+            initialDelaySeconds: 3
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mahi-tools
+  namespace: agents
+spec:
+  selector:
+    app: mahi-tools
+  ports:
+    - port: 8000
+      targetPort: 8000

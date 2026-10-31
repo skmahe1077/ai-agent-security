@@ -1,0 +1,29 @@
+# namespace.yaml and cluster.yaml only -- agent-db-secrets.yaml carries
+# ${AGENT_ORDER_DB_PASSWORD}/${AGENT_REFUND_DB_PASSWORD} placeholders and
+# is applied directly by scripts/01-provision.sh instead (see
+# k8s/argocd/README.md). cluster.yaml itself, including its
+# spec.managed.roles, has no placeholders -- this is the Application
+# whose sync is beat 4's "revocation/widening is a git commit" demo.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cnpg-resources
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/skmahe1077/ai-agent-security.git
+    targetRevision: HEAD
+    path: k8s/cnpg
+    directory:
+      exclude: "agent-db-secrets.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

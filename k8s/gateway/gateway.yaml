@@ -1,0 +1,27 @@
+# THE AGENT GATEWAY. Every call either secure agent makes to mahi-tools
+# goes through this. Listener is plain HTTP on 8080 -- this is east-west,
+# in-cluster traffic between two workloads in the same namespace; the
+# public-facing surface of this demo is the storefront's ALB, not this.
+#
+# Envoy Gateway creates the actual proxy Deployment+Service in
+# envoy-gateway-system, not here, with an auto-generated Service name
+# (based on owning-gateway labels -- confirmed not configurable via the
+# EnvoyProxy CRD). Rather than discover that name at deploy time and
+# envsubst it into every agent Deployment, k8s/gateway/stable-service.yaml
+# defines a SECOND Service selecting the same proxy pods by their stable
+# `gateway.envoyproxy.io/owning-gateway-*` labels -- so GATEWAY_URL can be
+# a plain, Git-committed constant everywhere it's used.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: mahi-gateway
+  namespace: agents
+spec:
+  gatewayClassName: eg
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 8080
+      allowedRoutes:
+        namespaces:
+          from: Same

@@ -1,0 +1,32 @@
+# The storefront is the demo: the audience watches a real retail site and
+# its chatbot, not a terminal. Public ALB via the AWS Load Balancer
+# Controller (terraform/alb.tf), discovered through the
+# kubernetes.io/role/elb subnet tags terraform/vpc.tf already carries.
+#
+# Demo is presenter-driven, not audience-browsed: ${ALB_INBOUND_CIDRS}
+# should be narrowed to the presenter's current IP, not left at 0.0.0.0/0
+# -- /api/admin/reset is unauthenticated (see docs/RUNBOOK.md).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: storefront
+  namespace: nimbus
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /api/products
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/load-balancer-name: ${NAME}-storefront
+    alb.ingress.kubernetes.io/inbound-cidrs: "${ALB_INBOUND_CIDRS}"
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: storefront
+                port:
+                  number: 8000

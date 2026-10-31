@@ -1,0 +1,76 @@
+# ${...} placeholders are substituted by scripts/01-provision.sh via
+# `envsubst` -- this manifest is applied directly, NOT through ArgoCD, for
+# the same reason the agent deployments are (see k8s/argocd/README.md):
+# IMAGE_TAG doesn't exist in Git until the build that produces it runs.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storefront
+  namespace: nimbus
+spec:
+  # Stays 1, not just for cost: app/storefront/main.py's `_panel_log` AND
+  # `_secure_routing` are in-process module state. A second replica would
+  # serve a different event history and could route the same thread's
+  # follow-up message to a different backend, depending on which pod the
+  # ALB landed on. (This is also the Deployment beat 3's scale_deployment
+  # tool call scales up/down -- going above 1 briefly breaks that
+  # assumption for the duration of the demo, same as the old talk's own
+  # single-replica constraint, just now a visible live demo instead of an
+  # invisible invariant.)
+  replicas: 1
+  selector:
+    matchLabels:
+      app: storefront
+  template:
+    metadata:
+      labels:
+        app: storefront
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: storefront
+          image: ${IMAGE_REGISTRY}/storefront:${IMAGE_TAG}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: STOREFRONT_DB_USER
+              valueFrom: { secretKeyRef: { name: storefront-db-creds, key: username } }
+            - name: STOREFRONT_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: storefront-db-creds, key: password } }
+            - name: DATABASE_URL
+              value: "postgresql://$(STOREFRONT_DB_USER):$(STOREFRONT_DB_PASSWORD)@mahistores-db-rw.data.svc.cluster.local:5432/mahistores"
+            - name: AGENT_INSECURE_URL
+              value: "http://agent-insecure.nimbus.svc.cluster.local:8000"
+            # "secure" mode is a dispatch between these two real identities
+            # -- see app/storefront/main.py's _resolve(). The customer
+            # never picks between them directly.
+            - name: AGENT_ORDER_URL
+              value: "http://order-agent.agents.svc.cluster.local:8000"
+            - name: AGENT_REFUND_URL
+              value: "http://agent-secure.agents.svc.cluster.local:8000"
+          readinessProbe:
+            httpGet:
+              path: /api/products
+              port: 8000
+            initialDelaySeconds: 3
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storefront
+  namespace: nimbus
+spec:
+  # ClusterIP, not LoadBalancer -- the public entrypoint is the ALB in
+  # ingress.yaml, which targets pod IPs directly (target-type: ip), so
+  # there's no per-Service ELB to pay for.
+  selector:
+    app: storefront
+  ports:
+    - port: 8000
+      targetPort: 8000

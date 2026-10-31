@@ -1,0 +1,35 @@
+# Kustomize source -- k8s/gateway/kustomization.yaml's configMapGenerator
+# builds OPA's policy ConfigMap directly from policy/rego/authz.rego, so a
+# git commit to that file is really what reaches a running OPA, not a
+# copy of it. Needs the cluster-wide `--load-restrictor LoadRestrictionsNone`
+# kustomize build option (see k8s/argocd/argocd-cm-patch.yaml) because that
+# generator's file reference lives outside this kustomization's own
+# directory -- a known, standard ArgoCD pattern for exactly this shape of
+# cross-directory generator, not a workaround.
+#
+# selfHeal here is beat 4's other half: widen order-agent's Postgres role
+# in Git (cnpg-resources) and the refund still gets denied, because this
+# Application's SecurityPolicy + OPA policy decide on SPIFFE identity and
+# request shape, never on what privilege a Postgres role happens to hold.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gateway
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/skmahe1077/ai-agent-security.git
+    targetRevision: HEAD
+    path: k8s/gateway
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: agents
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

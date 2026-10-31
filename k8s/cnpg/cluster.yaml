@@ -1,0 +1,72 @@
+# CloudNativePG Cluster -- replaces the old talk's AWS RDS instance.
+# Single instance, not HA: this is a torn-down-daily rehearsal cluster, the
+# same reasoning the old repo's Vault StatefulSet (1 replica, Raft) used.
+#
+# The 5 SQL files in app/db/ are applied once, in order, right after the
+# database is created, via postInitApplicationSQLRefs -- see
+# bootstrap-sql-configmap in scripts/01-provision.sh (generated with
+# envsubst over the two files that carry ${...} password placeholders,
+# then `kubectl create configmap --from-file`, NOT committed as a static
+# manifest with secrets baked in).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: mahistores-db
+  namespace: data
+spec:
+  instances: 1
+  # No imageName pinned here deliberately -- the operator's own default
+  # tracks a maintained, tested PostgreSQL image. Pin explicitly only if
+  # a specific major version becomes load-bearing for a stage demo.
+
+  storage:
+    size: 10Gi
+    storageClass: gp2
+
+  bootstrap:
+    initdb:
+      database: mahistores
+      owner: mahistores
+      postInitApplicationSQLRefs:
+        configMapRefs:
+          - name: mahi-db-bootstrap
+            key: 01_schema.sql
+          - name: mahi-db-bootstrap
+            key: 02_seed.sql
+          - name: mahi-db-bootstrap
+            key: 03_group_roles.sql
+          - name: mahi-db-bootstrap
+            key: 04_legacy_role.sql
+          - name: mahi-db-bootstrap
+            key: 05_storefront_role.sql
+
+  # Declarative, Git-delivered, GitOps-revocable login roles for the two
+  # agent identities mahi-tools authenticates as. THIS is the "revocation
+  # is a git commit" mechanism the talk's blueprint promises: flip `ensure`
+  # to absent, or drop an `inRoles` entry, commit, let ArgoCD sync it --
+  # CloudNativePG's operator reconciles the live role on the next
+  # instance-manager pass, and the agent's next query fails. No lease to
+  # revoke, no Vault token to kill -- the role itself goes away.
+  #
+  # Table-level GRANTs are NOT expressible here (CloudNativePG manages role
+  # attributes and membership only) -- that's why app/db/03_group_roles.sql
+  # creates mahi_order_grp/mahi_refund_grp with the real GRANTs, and these
+  # login roles only ever join one of them via inRoles.
+  managed:
+    roles:
+      - name: agent_order_login
+        ensure: present
+        login: true
+        connectionLimit: 5
+        inRoles:
+          - mahi_order_grp
+        passwordSecret:
+          name: agent-order-db-creds
+      - name: agent_refund_login
+        ensure: present
+        login: true
+        connectionLimit: 5
+        inRoles:
+          - mahi_refund_grp
+        passwordSecret:
+          name: agent-refund-db-creds

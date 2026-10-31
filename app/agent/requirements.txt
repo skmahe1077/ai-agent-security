@@ -1,0 +1,10 @@
+# Core -- exercised by the deterministic engine, which is what this repo
+# actually runs and verifies (see README -- AGENT_ENGINE=langchain is not
+# ported in this build; the conditional import in server.py is left in
+# place for a future contributor, not something to flip on expecting it
+# to work today).
+fastapi==0.118.0
+uvicorn[standard]==0.37.0
+psycopg2-binary==2.9.10
+pydantic==2.11.7
+requests==2.32.3

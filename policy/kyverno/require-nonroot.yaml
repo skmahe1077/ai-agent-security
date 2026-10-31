@@ -1,0 +1,26 @@
+# Baseline pod hardening for the agent-facing namespaces. None of this
+# exists in the inherited Vault-talk manifests (no securityContext,
+# runAsNonRoot, or seccompProfile anywhere in that repo) -- fully
+# greenfield here, and a reasonable minimum bar for anything that gets to
+# call itself an "agent gateway" blueprint.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-nonroot
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-run-as-nonroot
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["agents", "nimbus"]
+      validate:
+        message: >-
+          Pods in agents/nimbus must set spec.securityContext.runAsNonRoot: true.
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true

@@ -1,0 +1,20 @@
+# Terraform
+terraform/.terraform/
+# .terraform.lock.hcl is intentionally NOT ignored -- Terraform's own
+# guidance is to commit it so provider version selection is reproducible.
+terraform/terraform.tfstate
+terraform/terraform.tfstate.*
+terraform/terraform.tfvars
+terraform/*.tfplan
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Env files that might carry real credentials when filled in
+.env
+*.env.local
+
+# OS noise
+.DS_Store

@@ -1,0 +1,26 @@
+# A second, OURS-to-name Service pointing at the same Envoy proxy pods
+# Envoy Gateway's own auto-generated Service already selects. Kubernetes
+# has no problem with two Services selecting one set of pods -- and this
+# sidesteps a real problem: Envoy Gateway always creates its OWN Service
+# in envoy-gateway-system with an auto-generated name (based on owning-
+# gateway labels, not something `spec.provider.kubernetes.envoyService`
+# lets you pin -- confirmed against the EnvoyProxy CRD before building
+# this). Discovering that name at deploy time and envsubst-ing it into
+# every agent Deployment would mean GATEWAY_URL could never be a plain,
+# Git-committed value -- which would quietly undermine "policy changes
+# are a git commit, image tags are a deploy-time parameter" by making
+# agent deployments ALSO need deploy-time patching, for no good reason.
+# This Service exists purely so GATEWAY_URL can be a boring constant.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mahi-gateway-stable
+  namespace: envoy-gateway-system
+spec:
+  selector:
+    gateway.envoyproxy.io/owning-gateway-namespace: agents
+    gateway.envoyproxy.io/owning-gateway-name: mahi-gateway
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

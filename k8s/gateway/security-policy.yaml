@@ -1,0 +1,68 @@
+# THE two things the agent gateway actually does, per the abstract:
+# "verify agent identity" (spec.jwt) and "bind every tool or API call to
+# policy" (spec.extAuth -> OPA). Targets the HTTPRoute, not the Gateway,
+# so both apply to every /tools/* call and nothing else.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: mahi-tools-identity-and-policy
+  namespace: agents
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: mahi-tools-route
+
+  jwt:
+    providers:
+      - name: spire
+        # Must match SPIRE's global.spire.jwtIssuer exactly (k8s/spire/values.yaml)
+        # -- it's the literal `iss` claim SPIRE mints into every JWT-SVID.
+        issuer: "https://spire-spiffe-oidc-discovery-provider.spire-mgmt.svc.cluster.local"
+        # Matches the spiffe-helper ConfigMaps' jwt_audience ("gateway") --
+        # see k8s/agents/spiffe-helper-configmap.yaml. An SVID minted for
+        # any other audience (there is none in this demo, but this is the
+        # whole point of an audience claim) is refused here.
+        audiences:
+          - gateway
+        remoteJWKS:
+          # Plain HTTP, matching the discovery provider's own tls.spire.enabled:
+          # false (k8s/spire/values.yaml) -- in-cluster traffic, torn down
+          # daily, same deliberate simplification the old Vault talk made for
+          # its own in-cluster traffic. `uri` alone (no backendRefs) is
+          # sufficient -- Envoy resolves the in-cluster Service by DNS; see
+          # RemoteJWKS's own doc comment ("If BackendRefs is not specified,
+          # the URI field is used").
+          uri: "http://spire-spiffe-oidc-discovery-provider.spire-mgmt.svc.cluster.local/keys"
+        # The ENTIRE point: every downstream decision (OPA's extAuth call,
+        # mahi-tools' own DB-role selection) keys off the caller's real
+        # SPIFFE ID, carried in this one header -- never re-derived, never
+        # trusted from anywhere the caller itself could set it.
+        claimToHeaders:
+          - claim: sub
+            header: X-Spiffe-Id
+        # Needed because ClaimToHeaders feeds a header mahi-tools and OPA
+        # both read for authorization -- without this, a stale route-match
+        # decision could theoretically precede the header actually existing.
+        recomputeRoute: true
+
+  extAuth:
+    grpc:
+      backendRefs:
+        - name: opa
+          port: 9191
+    # gRPC ext_authz forwards ALL request headers to OPA by default
+    # (Envoy Gateway's own documented behaviour) -- including the
+    # Authorization bearer token, X-Spiffe-Id (written by claimToHeaders
+    # above, which runs first), and X-Approved-By when the agent is
+    # retrying an approved action. No headersToExtAuth needed.
+    bodyToExtAuth:
+      # UTF-8 string body (not packAsBytes -- gRPC-only and unnecessary
+      # here), so policy/rego/*.rego can `json.unmarshal` it directly to
+      # see refund amounts and replica counts.
+      maxRequestBytes: 8192
+    # A 403 Forbidden default is fine for most denials; mahi-tools itself
+    # (not OPA) returns 428 for the refund-approval case -- see
+    # app/mahi-tools/src/actions.py's comment on why that one decision
+    # needs the real order total, which only mahi-tools has.
+    failOpen: false
