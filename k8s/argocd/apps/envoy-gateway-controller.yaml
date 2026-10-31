@@ -21,7 +21,16 @@ spec:
     repoURL: docker.io
     chart: envoyproxy/gateway-helm
     targetRevision: 1.9.3
-    helm: {}
+    helm:
+      # Same CRD-dry-run bug as cloudnative-pg-operator.yaml / kyverno-
+      # controller.yaml -- this chart's largest CRD is
+      # httproutes.gateway.networking.k8s.io. Synced clean on the first run
+      # here only because the CRDs were already live (applied out-of-band)
+      # before this sync ran; skipCrds makes that not matter on any future
+      # sync/chart-bump. CRDs applied once via `helm template --include-crds
+      # | kubectl apply --server-side --force-conflicts` -- see
+      # docs/RUNBOOK.md.
+      skipCrds: true
   destination:
     server: https://kubernetes.default.svc
     namespace: envoy-gateway-system

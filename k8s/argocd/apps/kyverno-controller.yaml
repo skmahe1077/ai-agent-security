@@ -11,6 +11,15 @@ spec:
     repoURL: https://kyverno.github.io/kyverno/
     chart: kyverno
     targetRevision: 3.9.2
+    helm:
+      # Same fix as cloudnative-pg-operator.yaml -- ServerSideApply=true +
+      # Replace=true below do NOT stop ArgoCD's dry-run from client-side-
+      # applying these CRDs first; confirmed live, repeatedly, on this exact
+      # chart. skipCrds stops ArgoCD rendering the CRDs via Helm at all. The
+      # CRDs are applied once, out-of-band, via `helm template --include-crds
+      # | kubectl apply --server-side --force-conflicts` -- see
+      # docs/RUNBOOK.md.
+      skipCrds: true
   destination:
     server: https://kubernetes.default.svc
     namespace: kyverno

@@ -11,6 +11,17 @@ spec:
     repoURL: https://cloudnative-pg.github.io/charts
     chart: cloudnative-pg
     targetRevision: 0.29.1
+    helm:
+      # ServerSideApply=true + Replace=true (below) do NOT stop ArgoCD's
+      # dry-run step from client-side-applying these CRDs first -- confirmed
+      # live, repeatedly: the sync keeps failing on the identical
+      # 262144-byte annotation error even with both options set. skipCrds
+      # stops ArgoCD from ever rendering the CRD manifests via Helm at all,
+      # which is the only thing that actually avoids the broken code path.
+      # The CRDs themselves are applied once, out-of-band, via
+      # `helm template --include-crds | kubectl apply --server-side
+      # --force-conflicts` -- see docs/RUNBOOK.md.
+      skipCrds: true
   destination:
     server: https://kubernetes.default.svc
     namespace: cnpg-system
