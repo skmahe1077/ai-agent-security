@@ -75,7 +75,14 @@ landscape: SPIRE, Envoy Gateway, OPA, Kyverno, CloudNativePG, and ArgoCD, plus a
    git add k8s/argocd && git commit -m "set GIT_REPO_URL for ArgoCD" && git push
    ```
 3. `terraform`, `kubectl`, `helm`, `docker`, `aws` CLIs on your PATH.
-4. An ECR repository (or any registry you can `docker push` to and the cluster can pull from).
+4. A registry you can `docker push` to and the cluster can pull from. If using ECR, the three
+   repositories are **not** Terraform-managed and must exist before Phase E of
+   `scripts/01-provision.sh` runs:
+   ```bash
+   for repo in storefront agent mahi-tools; do
+     aws ecr create-repository --repository-name "<name>/$repo" --region <region>
+   done
+   ```
 
 Then:
 ```bash
@@ -88,6 +95,11 @@ bash scripts/01-provision.sh
 **This stack costs real money while it's up** (≈$0.43/hr -- see `docs/RUNBOOK.md`'s cost
 breakdown). Run `scripts/destroy.sh` after every rehearsal. `scripts/03-verify.sh` is the
 go/no-go gate -- run it after provisioning and again the morning of the talk.
+
+This full stack has been provisioned end-to-end on a real EKS cluster, with every
+`scripts/03-verify.sh` check passing (15/15). See `docs/RUNBOOK.md`'s "confirmed gotchas" for the
+real issues that first live run found and fixed -- an ArgoCD CRD-sync regression, an OPA
+ConfigMap-symlink crash, and the ECR-repo prerequisite above.
 
 ## The four beats
 

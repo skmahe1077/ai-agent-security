@@ -43,10 +43,20 @@ log "same agent, denied: this role has no grant on customers at all"
 chat '{"customer_id":1,"agent":"secure","message":"what is the phone number for customer 2","thread_id":"beat2"}' | show
 echo
 
+# The spire chart prefixes every k8s/spire/values.yaml clusterSPIFFEIDs.*
+# key with "<namespace>-<releaseName>-" (confirmed live:
+# spire-mgmt-spire-ai-order-agent, not the bare "ai-order-agent" this
+# demo originally assumed -- `kubectl delete clusterspiffeid
+# ai-order-agent` fails with NotFound on the real cluster). Resolve the
+# real name at run time instead of hardcoding it, so a future chart/
+# release-name change can't silently break the on-stage command again.
+ORDER_AGENT_CSID="$(kubectl get clusterspiffeid -o name | grep 'ai-order-agent$' | sed 's#.*/##')"
+[ -n "$ORDER_AGENT_CSID" ] || die "no ClusterSPIFFEID found matching 'ai-order-agent' -- check 'kubectl get clusterspiffeid'"
+
 log "the money shot -- there is no credential left to steal, because there never was one separate from the identity"
 echo "  Open the Identity card in the browser -- the SVID countdown is already live, ticking toward 0 from up to 300s."
 echo "  In a second terminal, say the line, then run:"
-echo "      kubectl delete clusterspiffeid ai-order-agent"
+echo "      kubectl delete clusterspiffeid $ORDER_AGENT_CSID"
 echo "  Confirm it's gone:"
 echo "      kubectl get clusterspiffeid"
 warn "this does NOT instantly kill the current SVID -- SPIRE simply stops renewing it. The agent goes inert over its remaining TTL, with nothing left for anyone (including the presenter) to separately revoke. Reapply k8s/spire/values.yaml's ClusterSPIFFEIDs afterward to restore it for the next rehearsal."

@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Beat 1 -- standing access is the problem. ~3 min on stage.
-# Works against either a local docker-compose stack (default
-# STOREFRONT_URL) or a `kubectl -n nimbus port-forward svc/storefront
-# 8000:8000` to the real deployment -- this script only talks HTTP, it
-# doesn't care which.
+# $STOREFRONT_URL defaults to the live ALB (lib/common.sh's
+# storefront_url(), via `kubectl get ingress`); this script only talks
+# HTTP, so a `kubectl -n nimbus port-forward svc/storefront 8000:8000`
+# with STOREFRONT_URL=http://localhost:8000 works identically if the ALB
+# is ever torn down between rehearsals while a laptop demo is still
+# needed. There is no docker-compose/local-stack equivalent in this repo
+# -- every component here is a real cluster resource.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
@@ -20,7 +23,7 @@ for e in d.get('events', []):
 
 log "the support widget is talking to the LEGACY agent -- a static password, no identity"
 kubectl get secret db-static-creds -n nimbus -o jsonpath='{.data.password}' 2>/dev/null | base64 -d \
-  || warn "(not running on the real cluster -- see docker-compose.yml's agent-insecure service for the equivalent)"
+  || die "db-static-creds not found in namespace nimbus -- run scripts/01-provision.sh (or just k8s/agents/agent-insecure.yaml) first"
 echo
 
 log "Idhazhini asks to refund her own order #1042"

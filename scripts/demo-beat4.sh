@@ -86,4 +86,4 @@ kubectl apply -f /tmp/beat4-bad-pod.yaml && warn "this should have been rejected
 rm -f /tmp/beat4-bad-pod.yaml
 
 echo
-log 'say the line: "the ceiling policy you just watched NOT catch a mistake, on a normal request -- is the SAME policy that gated the real delegated refund in beat 3. One policy, two request shapes, two different outcomes."'
+log "say the line: OPA and Kyverno just caught two completely different mistakes -- a widened database privilege, and a non-compliant pod -- without either one trusting the agent, the deployer, or each other. Neither is the whole story alone: Part A shows policy on every call beats whatever privilege happens to exist underneath it; Part B shows a bad deployment never even gets to make a call. That is defense in depth, demonstrated live, not asserted on a slide."

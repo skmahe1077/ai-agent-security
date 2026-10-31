@@ -4,9 +4,49 @@
 tag, Rego rule, and Kustomize/ArgoCD pattern in it was checked against a real source (`helm
 search repo --versions`, `helm pull`, `opa eval` against real fixtures, the actual Go source of
 Envoy Gateway's CRDs, `jmespath` library tests for the Kyverno expressions) rather than assumed.
-But it has **not yet been run end-to-end against a live cluster**. Treat the "anticipated
-gotchas" section below as exactly that -- informed predictions, not confirmed war stories. When
-you hit a real one, move it into "confirmed gotchas" with the date and what actually happened.
+**It has since been run end-to-end against a real EKS cluster** (2026-10-31) -- every
+`scripts/03-verify.sh` check passes (15/15). The real issues that first run found are in
+"confirmed gotchas" below, with what actually happened and the fix now in Git. The "anticipated
+gotchas" section after it is what's left: informed predictions for areas that run cleanly worked
+but haven't been stress-tested (chart version bumps, a from-scratch rehearsal on a different AWS
+account, etc).
+
+## Confirmed gotchas (found on the first live run, 2026-10-31)
+
+1. **ArgoCD's Helm-chart CRD sync hits a real regression on large CRDs**
+   (argoproj/argo-cd#28421) -- `cloudnative-pg-operator`, `kyverno-controller`, and
+   `envoy-gateway-controller` all failed sync with `metadata.annotations: Too long: may not be
+   more than 262144 bytes` on their biggest CRDs (`clusters.postgresql.cnpg.io`,
+   `clusterpolicies.kyverno.io`, `httproutes.gateway.networking.k8s.io`, etc). Neither
+   `ServerSideApply=true`/`Replace=true` nor Helm's `source.helm.skipCrds` nor a per-Application
+   `ignoreDifferences` on the CRD's annotations stopped it -- ArgoCD's sync path does a one-time
+   bootstrap client-side-apply (writing the full oversized `last-applied-configuration`
+   annotation) for any CRD it doesn't yet recognize as ArgoCD-managed, regardless of those
+   settings. The fix that actually works: `resource.exclusions` in `k8s/argocd/
+   argocd-cm-patch.yaml` removes `CustomResourceDefinition` from ArgoCD's pipeline entirely. CRD
+   schemas are applied once, out-of-band: `helm template <chart> --include-crds | kubectl apply
+   --server-side --force-conflicts`. ArgoCD still manages every non-CRD resource in those charts
+   normally.
+2. **OPA crash-looped with `rego_type_error: multiple default rules ... found`** --
+   `k8s/gateway/opa-deployment.yaml` ran `opa run /policy` against the whole ConfigMap-mounted
+   directory. ConfigMap volumes expose each key through both a `..data` symlink directory and a
+   top-level symlink of the same name into it; OPA's directory walk followed both paths to the
+   same inode and loaded `authz.rego` twice under different module paths, which it then rejected
+   outright. Fixed by pointing OPA at the single file (`/policy/authz.rego`), not the directory.
+3. **The ECR repositories are not Terraform-managed** and don't exist on a fresh AWS account --
+   `scripts/01-provision.sh`'s Phase E (`docker push`) fails with `RepositoryNotFoundException`
+   until `aws ecr create-repository` is run for each of `storefront`/`agent`/`mahi-tools` first.
+   See the README's prerequisites.
+4. **The SPIRE chart prefixes every `clusterSPIFFEIDs.*` key** from `k8s/spire/values.yaml` with
+   `<namespace>-<releaseName>-` -- the live resource is `spire-mgmt-spire-ai-order-agent`, not the
+   bare `ai-order-agent` several scripts originally assumed. Fixed in `scripts/03-verify.sh` (match
+   by name suffix) and `scripts/demo-beat2.sh` (resolve the real name at run time before the
+   on-stage `kubectl delete clusterspiffeid` command).
+5. **`kubectl run --rm` appends `pod "..." deleted` to stdout on the same line as the wrapped
+   command's own output**, with no separating newline -- a status-code check in
+   `scripts/03-verify.sh` anchored at end-of-line (`grep -qE '^(401|403)$'`) always failed
+   regardless of the real response. Anchor at start-of-line only when checking output from a
+   `kubectl run --rm` pod.
 
 ## Provisioning order, and why it's still phased
 
@@ -55,7 +95,10 @@ something to rediscover on a fresh provision:
    StatefulSet PVCs not deleted by Helm uninstall, PVC deletion not meaning the EBS volume is
    gone yet).
 
-## Anticipated gotchas (not yet confirmed live -- watch for these first)
+## Fragile points (confirmed working as-implemented on the 2026-10-31 live run -- don't break these)
+
+Each of these worked correctly on the real cluster without needing a fix, but stays fragile to a
+future edit -- worth knowing what to watch if any of these files change.
 
 1. **The SPIRE chart's `global.spire.jwtIssuer` must exactly match Envoy Gateway's
    `SecurityPolicy.spec.jwt.providers[].issuer`** (`k8s/spire/values.yaml` vs.
@@ -68,10 +111,11 @@ something to rediscover on a fresh provision:
    Application's build will succeed -- `01-provision.sh` restarts that Deployment after patching
    the ConfigMap, but if ArgoCD ever changes how it watches `argocd-cm` for live reload, this step
    may need revisiting.
-3. **CloudNativePG's exact `Cluster` Ready-condition semantics** haven't been exercised against a
-   real instance yet -- `kubectl wait --for=condition=Ready cluster/mahistores-db` is the
-   documented pattern, but if the operator reports readiness differently than expected, watch
-   `kubectl -n data describe cluster mahistores-db` rather than trusting the wait silently hanging.
+3. **CloudNativePG's `Cluster` Ready condition** (`kubectl wait --for=condition=Ready
+   cluster/mahistores-db`) reported readiness correctly and the webhook's TLS cert self-resolved
+   once the operator pod stabilized -- if a future run sees a persistent `x509: certificate signed
+   by unknown authority` on the `mcluster.cnpg.io` webhook, check `cnpg-system` pod restart counts
+   before assuming something else is wrong.
 4. **Envoy Gateway's remote JWKS over plain HTTP** (`k8s/gateway/security-policy.yaml`'s
    `remoteJWKS.uri: http://...`) is a deliberate simplification (matching SPIRE's own OIDC
    Discovery Provider being configured with `tls.spire.enabled: false`) but is less load-bearing
