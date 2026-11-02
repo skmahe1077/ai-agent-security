@@ -564,11 +564,17 @@ h2:first-child { margin-top: 0; }
   z-index: 0;
 }
 .connector-line {
+  /* var(--baseline) here resolved to #2a3454 against .flow-dark's
+     #0a0e1a page-plane -- confirmed live, effectively invisible (well
+     under WCAG's 3:1 minimum for graphical objects). text-secondary
+     reads clearly without competing with the bright --status-good pulse
+     that travels along these same lines. */
   fill: none;
-  stroke: var(--baseline);
+  stroke: var(--text-secondary);
   stroke-width: 1.5;
+  opacity: 0.55;
 }
-.connector-arrowhead-fill { fill: var(--baseline); }
+.connector-arrowhead-fill { fill: var(--text-secondary); opacity: 0.55; }
 .stage-col-head { display: flex; align-items: center; gap: 8px; }
 .stage-col-num {
   width: 26px; height: 26px;
