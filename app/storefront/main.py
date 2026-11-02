@@ -66,8 +66,27 @@ def _resolve(agent: str, thread_id: str, message: str | None = None) -> str:
 
 app = FastAPI(title="Mahi Stores")
 
+
+class _NoCacheStaticFiles(StaticFiles):
+    """Starlette's StaticFiles sends Last-Modified/ETag but no
+    Cache-Control at all -- browsers then apply heuristic freshness and
+    can serve a stale app.js/image on a plain reload (not just first
+    load), not only a hard-refresh. Confirmed live: a browser tab open
+    since an earlier deploy kept rendering an app.js version from two
+    redeploys ago. no-cache (not no-store) still lets ETag/Last-Modified
+    serve cheap 304s -- it only forces revalidation, not a full refetch
+    every time. Matters here specifically because this app gets
+    redeployed repeatedly right up to the talk.
+    """
+
+    def file_response(self, *args, **kwargs):
+        resp = super().file_response(*args, **kwargs)
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/static", _NoCacheStaticFiles(directory=STATIC_DIR), name="static")
 
 # Most recent panel-relevant events, newest last. Capped so a long rehearsal
 # session doesn't grow this unboundedly; the UI only ever renders the tail.
