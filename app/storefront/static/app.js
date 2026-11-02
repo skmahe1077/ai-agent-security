@@ -185,8 +185,13 @@ async function loadProducts() {
     const card = document.createElement("div");
     card.className = "product-card";
     const imgSrc = _imageFor(p.name);
+    // width/height attributes (not just CSS) are required here -- these
+    // logos are plain <img src="*.svg"> with no width/height on the SVG
+    // itself (only viewBox), and some browsers fail to size an <img> at
+    // all from CSS percentages alone when the source has no intrinsic
+    // size, rendering nothing. Confirmed live.
     const imageHtml = imgSrc
-      ? `<img src="${imgSrc}" alt="${p.name}" loading="lazy" />`
+      ? `<img src="${imgSrc}" alt="${p.name}" loading="lazy" width="160" height="160" />`
       : "";
     card.innerHTML = `
       <div class="product-image">${imageHtml}</div>

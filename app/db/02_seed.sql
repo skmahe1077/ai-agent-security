@@ -12,10 +12,13 @@
 -- deliberately a DIFFERENT order than beat 1's, so scripts/demo-beat{1,2}.sh
 -- can run back-to-back without scripts/reset.sh in between and neither hits
 -- "already refunded." Both are under the £100 auto-approval threshold.
--- order #1046 (Ilan, CNCF trucker cap x1, £24) is the "wrong customer"
+-- order #1046 (Ilan, Kubernetes beanie, £18) is the "wrong customer"
 -- refund both beat 1 (succeeds -- the point) and beat 2 (denied -- the
 -- point) attempt while chatting as Idhazhini. Also under threshold, so the
--- point stays overprivilege/ownership, not the approval gate.
+-- point stays overprivilege/ownership, not the approval gate. Deliberately
+-- a DIFFERENT product than order #1045's, even though both are Idhazhini/
+-- Ilan's cheap items -- the original design reused the same product_id for
+-- both, which reads as a duplicate line item in the Order History table.
 -- order #1043 (Ilan, Samsonite backpack, £204) and #1044 (Ruba, Eddie Bauer
 -- parka, £122) sit above the threshold for exercising the approval flow
 -- itself -- #1044 is the one scripts/demo-beat3.sh actually walks through.
@@ -55,7 +58,7 @@ INSERT INTO orders (order_id, customer_id, product_id, quantity, total_pence, st
     (1043, 2, 2, 1, 20400, 'delivered', now() - interval '4 days'),
     (1044, 3, 3, 1, 12200, 'delivered', now() - interval '2 days'),
     (1045, 1, 4, 2, 4800,  'shipped',   now() - interval '1 day'),
-    (1046, 2, 4, 1, 2400,  'delivered', now() - interval '3 days')
+    (1046, 2, 6, 1, 1800,  'delivered', now() - interval '3 days')
 ON CONFLICT (order_id) DO NOTHING;
 
 SELECT setval('orders_order_id_seq', (SELECT MAX(order_id) FROM orders));
