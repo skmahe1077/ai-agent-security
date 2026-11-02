@@ -826,8 +826,13 @@ function updateBypassArc(show) {
     label.classList.add("hidden");
     return;
   }
-  const from = $("stagecol-authenticate");
-  const to = $("stagecol-credential");
+  // Arcs from Policy to Execute, over Approval -- the stage that's
+  // actually being skipped. Stale IDs here (stagecol-authenticate /
+  // stagecol-credential, from the pre-relabel Identity/Authenticate/
+  // Approval/Credential/Execute stage names) meant `from`/`to` were
+  // always null and this arc never drew at all. Confirmed live.
+  const from = $("stagecol-policy");
+  const to = $("stagecol-execute");
   if (!from || !to) return;
   const x1 = from.offsetLeft + from.offsetWidth / 2;
   const x2 = to.offsetLeft + to.offsetWidth / 2;
