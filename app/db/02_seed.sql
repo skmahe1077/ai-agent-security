@@ -1,16 +1,24 @@
--- Demo data for Mahi Stores.
+-- Demo data for Mahi Stores -- a KubeCon swag catalog, items and prices
+-- drawn from the real CNCF store (https://store.cncf.io/collections/all)
+-- as of 2026-11-02. See app/storefront/static/images/ATTRIBUTION.md for
+-- why the product *photos* aren't copied from that store (its own
+-- copyrighted product photography) while the *logos* on each card are
+-- (official cncf/artwork assets, reused under the Linux Foundation
+-- trademark usage guidelines -- legitimate for a KubeCon talk about these
+-- exact projects).
 --
--- order #1042 (Idhazhini, headphones, £89) is beat 1's refund.
--- order #1045 (Idhazhini, charger x2, £64) is beat 2's refund -- deliberately
--- a DIFFERENT order than beat 1's, so scripts/demo-beat{1,2}.sh can run
--- back-to-back without scripts/reset.sh in between and neither hits
+-- order #1042 (Idhazhini, Kubernetes hoodie, £78) is beat 1's refund.
+-- order #1045 (Idhazhini, CNCF trucker cap x2, £48) is beat 2's refund --
+-- deliberately a DIFFERENT order than beat 1's, so scripts/demo-beat{1,2}.sh
+-- can run back-to-back without scripts/reset.sh in between and neither hits
 -- "already refunded." Both are under the £100 auto-approval threshold.
--- order #1046 (Ilan, charger, £32) is the "wrong customer" refund both
--- beat 1 (succeeds -- the point) and beat 2 (denied -- the point) attempt
--- while chatting as Idhazhini. Also under threshold, so the point stays
--- overprivilege/ownership, not the approval gate.
--- order #1043 (Ilan, keyboard, £125) and #1044 (Ruba, monitor, £450) sit
--- above the threshold for exercising the approval flow itself.
+-- order #1046 (Ilan, CNCF trucker cap x1, £24) is the "wrong customer"
+-- refund both beat 1 (succeeds -- the point) and beat 2 (denied -- the
+-- point) attempt while chatting as Idhazhini. Also under threshold, so the
+-- point stays overprivilege/ownership, not the approval gate.
+-- order #1043 (Ilan, Samsonite backpack, £204) and #1044 (Ruba, Eddie Bauer
+-- parka, £122) sit above the threshold for exercising the approval flow
+-- itself -- #1044 is the one scripts/demo-beat3.sh actually walks through.
 
 INSERT INTO customers (customer_id, name, email, phone) VALUES
     (1, 'Idhazhini',  'idhazhini@example.com', '+44 7700 900001'),
@@ -18,33 +26,36 @@ INSERT INTO customers (customer_id, name, email, phone) VALUES
     (3, 'Ruba',       'ruba@example.com',      '+44 7700 900003')
 ON CONFLICT (customer_id) DO NOTHING;
 
--- Products 5-10 are additive only -- do not renumber 1-4, the orders below
+-- Products 5-14 are additive only -- do not renumber 1-4, the orders below
 -- reference them by id, and scripts/demo-beat{1,2,3}.sh reference those
--- orders by id in turn. These exist to make the catalog grid look like a
--- real shop's worth of inventory, not a 4-item demo fixture.
+-- orders by id in turn. Each card's logo ties back to a real CNCF project;
+-- where the real store item is generically "CNCF"-branded (not already a
+-- specific sub-project's own merch) it's assigned one of the projects this
+-- demo's own security stack actually runs, as a deliberate easter egg --
+-- the swag you can "buy" features the same projects securing the checkout.
 INSERT INTO products (product_id, name, description, price_pence, stock) VALUES
-    (1,  'Wireless Headphones',  'Over-ear, 30h battery, active noise cancelling', 8900,  42),
-    (2,  'Mechanical Keyboard',  'Hot-swappable switches, USB-C',                   12500, 30),
-    (3,  '27" Monitor',          '4K IPS, 144Hz',                                   45000, 12),
-    (4,  'USB-C Charger 65W',    'GaN, compact',                                     3200, 80),
-    (5,  'Wireless Mouse',       'Silent click, 6-month battery',                    3500, 65),
-    (6,  'Laptop Stand',         'Aluminium, folds flat',                            4200, 38),
-    (7,  '1080p Webcam',         'Autofocus, built-in mic',                          5600, 24),
-    (8,  'Bluetooth Speaker',    'IPX7 water-resistant, 12h playback',               6900, 50),
-    (9,  'Laptop Sleeve 14"',    'Padded, water-repellent',                          2400, 90),
-    (10, 'USB-C Hub',            '7-in-1, HDMI + card reader',                       4800, 55),
-    (11, 'iPhone 18 Pro',        'Titanium, 256GB',                                 99900, 20),
-    (12, 'MacBook Air',          '15", M-series chip',                             129900, 15),
-    (13, 'AirPods Pro',          'Active noise cancelling, USB-C case',             22900, 60),
-    (14, 'Apple Watch',          'GPS, 45mm',                                       39900, 25)
+    (1,  'Custom Kubernetes Full Zip Hoodie',      'Embroidered Kubernetes wheel, fleece-lined',        7800,  42),
+    (2,  'Samsonite Arcway Laptop Backpack',       'Professional travel backpack, CNCF embroidery',    20400,  12),
+    (3,  'Eddie Bauer Hooded Soft Shell Parka',    'Insulated, water-resistant, CNCF embroidery',       12200,  15),
+    (4,  'CNCF Richardson Low Pro Trucker',        'Low-profile trucker cap, snapback',                  2400,  80),
+    (5,  'Heritage Corduroy Trucker Cap',          'Classic corduroy trucker, adjustable',               3400,  38),
+    (6,  'Kubernetes Custom Woven Beanie',         'Knit winter beanie, woven wheel logo',               1800,  65),
+    (7,  'Kruger Fleece Crew',                     'Casual fleece crewneck',                             4400,  50),
+    (8,  'Helm - Embossed Midweight Crewneck',     'Embossed Helm ship-wheel logo',                     10000,  24),
+    (9,  'Phippy & Friends Core Cotton Tee',       'Phippy the giraffe, soft cotton tee',                2100,  90),
+    (10, 'SOMOTO Eco Long Sleeve Tee',             'Sustainable fabric, long sleeve',                    4400,  55),
+    (11, 'Stanley/Stella Cooper Dry Hoodie',       'Organic cotton blend hoodie',                        7200,  30),
+    (12, 'The Illustrated Children''s Guide to Kubernetes', 'Picture book, ages 5+',                       500, 100),
+    (13, 'Eddie Bauer Fleece Vest',                'Mid-layer fleece vest, CNCF embroidery',             6200,  20),
+    (14, 'Car Magnet - CNCF',                      'Small vehicle magnet',                                300, 150)
 ON CONFLICT (product_id) DO NOTHING;
 
 INSERT INTO orders (order_id, customer_id, product_id, quantity, total_pence, status, placed_at) VALUES
-    (1042, 1, 1, 1, 8900,  'delivered', now() - interval '6 days'),
-    (1043, 2, 2, 1, 12500, 'delivered', now() - interval '4 days'),
-    (1044, 3, 3, 1, 45000, 'delivered', now() - interval '2 days'),
-    (1045, 1, 4, 2, 6400,  'shipped',   now() - interval '1 day'),
-    (1046, 2, 4, 1, 3200,  'delivered', now() - interval '3 days')
+    (1042, 1, 1, 1, 7800,  'delivered', now() - interval '6 days'),
+    (1043, 2, 2, 1, 20400, 'delivered', now() - interval '4 days'),
+    (1044, 3, 3, 1, 12200, 'delivered', now() - interval '2 days'),
+    (1045, 1, 4, 2, 4800,  'shipped',   now() - interval '1 day'),
+    (1046, 2, 4, 1, 2400,  'delivered', now() - interval '3 days')
 ON CONFLICT (order_id) DO NOTHING;
 
 SELECT setval('orders_order_id_seq', (SELECT MAX(order_id) FROM orders));

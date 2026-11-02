@@ -31,7 +31,7 @@ log "human-approval-login: caching '$APPROVER' as the approver (NOT a real IdP l
 "$(dirname "${BASH_SOURCE[0]}")/human-approval-login.sh" "$APPROVER"
 echo
 
-log "Ruba asks for a £450 refund on order #1044 -- well over the auto-approval limit"
+log "Ruba asks for a £122 refund on order #1044 (Eddie Bauer parka) -- well over the auto-approval limit"
 chat '{"customer_id":3,"agent":"secure","message":"please refund order #1044","thread_id":"beat3"}' | show
 echo
 

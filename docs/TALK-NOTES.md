@@ -17,7 +17,7 @@ on its own.
 | **Route agent actions through a controlled gateway** | Every single tool call either secure agent makes goes through Envoy Gateway -- beat 2's "no credential anywhere" claim and beat 4's "OPA still denies" claim are both really claims about this one chokepoint. |
 | **Enforce least privilege** | Two genuinely separate Postgres login roles (`agent_order_login`/`agent_refund_login`), joined to two different group roles with different GRANTs, declared in Git (`k8s/cnpg/cluster.yaml`). order-agent's role has no INSERT on `refunds`, full stop -- enforced by PostgreSQL, re-checked on every query, not cached as a one-time decision. |
 | **Bind every tool or API call to policy** | OPA's `extAuth` call happens on every request Envoy Gateway's `SecurityPolicy` sees -- not once at login. Beat 3's refund-threshold and replica-ceiling checks, and beat 4's identity-based `issue_refund` rule, are all the SAME mechanism applied to different requests. |
-| **Require approval for risky operations** | Beat 3: a £450 refund and an 8-replica scale request both pause for a human; the storefront's approval card is populated from a cached presenter identity, forwarded as `X-Approved-By`, recorded in the refunds row (`issued_by`/`approved_by`/`correlation_id`) -- the action and the authorization are the same auditable event. |
+| **Require approval for risky operations** | Beat 3: a £122 refund and an 8-replica scale request both pause for a human; the storefront's approval card is populated from a cached presenter identity, forwarded as `X-Approved-By`, recorded in the refunds row (`issued_by`/`approved_by`/`correlation_id`) -- the action and the authorization are the same auditable event. |
 | **Audit-ready controls across Kubernetes, cloud-native, and hybrid** | The Approval card's detail drawer shows approver + workload identity + the action together, and this record persists after the SVID that made the call has long since expired -- the ephemeral thing and the durable record of who authorized it are different things, on purpose. |
 
 ## Beat 1 -- standing access is the problem (~3 min)
@@ -68,7 +68,7 @@ name as the approver for the next 30 minutes -- NOT a real IdP login. If skipped
 button is disabled with an explicit reason, not a silent failure.
 
 **Presenter does:**
-1. Ask for a refund clearly too large (#1044, £450) -- the graph pauses at Policy (amber); the
+1. Ask for a refund clearly too large (#1044, £122) -- the graph pauses at Policy (amber); the
    approval card shows an identity chip ("Approve as **you** -- expires in Nm") instead of a
    text box.
 2. Click **Approve**. Two things are true at once: the identity performing the call is still the

@@ -1,41 +1,36 @@
-Product catalog images, sourced from Wikimedia Commons (freely licensed --
-CC-BY / CC-BY-SA / public domain; Commons only hosts freely-licensed media).
-Generic category photography, not real "Mahi Stores" product photography --
-this is a demo app for a fictional store.
+Product catalog logos, sourced from the official [cncf/artwork](https://github.com/cncf/artwork)
+repo (the `icon/color` SVG variant for each project, plus Phippy from `other/phippy-and-friends/`).
+All artwork in that repo is made available under the Linux Foundation's
+[trademark usage guidelines](https://www.linuxfoundation.org/trademark-usage/), which permit this
+kind of use -- accurately referencing a project in a talk/demo about that project, with no
+implication that the project or the Linux Foundation endorses or sponsors this demo. **Mahi Stores
+is a fictional demo storefront, not affiliated with or endorsed by CNCF, the Linux Foundation, or
+any project below.**
 
-| File | Commons title |
-|---|---|
-| headphones.jpg | MDR-ZX310.jpg |
-| keyboard.jpg   | Mechanical Keyboard.jpg |
-| monitor.png    | EIZO Foris FG2421 VGA computer monitor displaying test pattern.png |
-| charger.jpg    | Ugreen car charger USB-C USB-A 30W 25845.jpg |
-| mouse.jpg      | A wireless computer mouse.jpg |
-| stand.jpg      | Laptop stand.jpg |
-| webcam.jpg     | Webcam (Logitech c922).jpg |
-| speaker.jpg    | UE Boom 2.jpg |
-| sleeve.jpg     | Laptop bag.jpg |
-| hub.jpg        | USB hub Gembird.jpg |
-| iphone.png     | IPhone 15 pro.png (cropped to a single device) |
-| macbook.jpg    | MacBook Air black.jpg |
-| airpods.jpg    | AirPods Pro (2nd generation).jpg |
-| applewatch.png | Apple Watch Series 10.png (cropped to a single device) |
+The catalog items themselves (names, descriptions, approximate prices) are drawn from the real
+[CNCF store](https://store.cncf.io/collections/all) as of 2026-11-02 -- but the product *photos*
+on that store are its own copyrighted product photography, not freely licensed, so they are
+deliberately **not** copied here. Each card instead shows the relevant project's logo rather than
+a photo of the physical item.
 
-"iPhone 18 Pro"/"MacBook Air"/"AirPods Pro"/"Apple Watch" are demo catalog
-labels, not claims about a specific real current model -- same generic-
-category-photo convention as the rest of this list, just a well-known
-brand this time. Not affiliated with or endorsed by Apple Inc.; Mahi
-Stores is a fictional demo storefront.
+| File | Project | Source |
+|---|---|---|
+| kubernetes.svg    | Kubernetes      | `projects/kubernetes/icon/color/kubernetes-icon-color.svg` |
+| cncf.svg           | CNCF (general)  | `other/cncf/icon/color/cncf-icon-color.svg` |
+| envoy.svg          | Envoy           | `projects/envoy/icon/color/envoy-icon-color.svg` |
+| opa.svg            | Open Policy Agent | `projects/open-policy-agent/icon/color/opa-icon-color.svg` |
+| spiffe.svg         | SPIFFE          | `projects/spiffe/icon/color/spiffe-icon-color.svg` |
+| kyverno.svg        | Kyverno         | `projects/kyverno/icon/color/kyverno-icon-color.svg` |
+| helm.svg           | Helm            | `projects/helm/icon/color/helm-icon-color.svg` |
+| cloudnativepg.svg  | CloudNativePG   | `projects/cloudnativepg/icon/color/cloudnativepg-icon-color.svg` |
+| argo.svg           | Argo            | `projects/argo/icon/color/argo-icon-color.svg` |
+| phippy.svg         | Phippy & Friends | `other/phippy-and-friends/phippy_full.svg` |
 
-iphone.png and applewatch.png are crops of CC-BY-SA 4.0 originals that
-each showed two devices side by side -- cropped to isolate a single
-device for the product card, which CC-BY-SA's share-alike/remix terms
-permit. Both are the newest real Apple products with a freely-licensed
-Commons photo available as of this writing (iPhone 15 Pro, 2023; Apple
-Watch Series 10, 2024) -- still not Apple's actual current lineup, which
-isn't available under a free license at all; see this directory's git
-history for the older photos these replaced if a straight comparison is
-useful.
+Where a real CNCF store item is generically "CNCF"-branded rather than a specific sub-project's
+own merch (a plain trucker cap, a fleece vest), its card is assigned one of the projects this
+demo's own security stack actually runs (Envoy, OPA, SPIFFE, Kyverno, CloudNativePG, Argo) --
+see `app/storefront/static/app.js`'s `PRODUCT_IMAGES` comment. That's a deliberate easter egg
+(the swag you can "buy" features the same projects securing the checkout behind it), not a claim
+about what the real store item ships with.
 
-Full details (author, exact license) at
-https://commons.wikimedia.org/wiki/File:<title>, substituting the Commons
-title above (spaces -> underscores).
+Full file history: all raw asset URLs are `https://raw.githubusercontent.com/cncf/artwork/master/<path above>`.

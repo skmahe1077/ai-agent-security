@@ -125,27 +125,31 @@ function fmtTime(ts) {
 
 // ---------- catalog ----------
 
-// Real product photos (Wikimedia Commons, freely licensed -- see
-// static/images/ATTRIBUTION.md), bundled locally and served as static
-// files -- not hotlinked to an external host. Keyed by a keyword matched
-// against the product name, not product_id, so new catalog rows pick up a
-// sensible image for free. Local, not a live external URL: nothing to
-// fail to load if the venue Wi-Fi drops mid-talk.
+// Official CNCF/project logos (cncf/artwork, reused under the Linux
+// Foundation trademark usage guidelines -- see static/images/
+// ATTRIBUTION.md), bundled locally and served as static files -- not
+// hotlinked to an external host, so nothing fails to load if the venue
+// Wi-Fi drops mid-talk. Keyed by a keyword matched against the product
+// name, not product_id, so new catalog rows pick up a sensible image for
+// free. Generically-"CNCF"-branded items (not a specific sub-project's
+// own merch) are assigned one of the projects this demo's own security
+// stack actually runs -- a deliberate easter egg, not an accuracy claim
+// about which project the real store item ships with.
 const PRODUCT_IMAGES = {
-  headphone: "headphones.jpg",
-  keyboard: "keyboard.jpg",
-  monitor: "monitor.png",
-  charger: "charger.jpg",
-  mouse: "mouse.jpg",
-  stand: "stand.jpg",
-  webcam: "webcam.jpg",
-  speaker: "speaker.jpg",
-  sleeve: "sleeve.jpg",
-  hub: "hub.jpg",
-  iphone: "iphone.png",
-  macbook: "macbook.jpg",
-  airpods: "airpods.jpg",
-  watch: "applewatch.png",
+  "full zip":      "kubernetes.svg",   // Custom Kubernetes Full Zip Hoodie
+  samsonite:       "cncf.svg",         // Samsonite Arcway Laptop Backpack
+  parka:           "envoy.svg",        // Eddie Bauer Hooded Soft Shell Parka -- this demo's gateway
+  richardson:      "opa.svg",          // CNCF Richardson Low Pro Trucker -- this demo's policy engine
+  corduroy:        "spiffe.svg",       // Heritage Corduroy Trucker Cap -- this demo's identity layer
+  beanie:          "kubernetes.svg",   // Kubernetes Custom Woven Beanie
+  kruger:          "kyverno.svg",      // Kruger Fleece Crew -- this demo's admission control
+  helm:            "helm.svg",         // Helm - Embossed Midweight Crewneck
+  phippy:          "phippy.svg",       // Phippy & Friends Core Cotton Tee
+  somoto:          "cloudnativepg.svg",// SOMOTO Eco Long Sleeve Tee -- this demo's database
+  "cooper dry":    "argo.svg",         // Stanley/Stella Cooper Dry Hoodie -- this demo's GitOps
+  illustrated:     "kubernetes.svg",   // Illustrated Children's Guide to Kubernetes
+  vest:            "cncf.svg",         // Eddie Bauer Fleece Vest
+  magnet:          "cncf.svg",         // Car Magnet - CNCF
 };
 
 function _imageFor(name) {
