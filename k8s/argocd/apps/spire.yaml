@@ -24,3 +24,15 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      # spire-mgmt was never actually created by anything -- not this
+      # Application, not k8s/00-namespaces.yaml, not
+      # scripts/01-provision.sh. On the first live run it only existed
+      # because of a one-off manual `kubectl create namespace` made during
+      # live debugging and never persisted; confirmed live on a second,
+      # truly-fresh rebuild: the sync failed outright with "namespaces
+      # \"spire-mgmt\" not found" (plus a cascading webhook-not-found error
+      # from the chart's own ClusterSPIFFEID validating webhook, since
+      # nothing in the target namespace had started). CreateNamespace=true
+      # is the actual, permanent fix.
+      - CreateNamespace=true
