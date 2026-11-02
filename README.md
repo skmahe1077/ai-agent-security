@@ -118,4 +118,6 @@ Full presenter notes, talking points, and the promise→mechanism table: `docs/T
 
 - `docs/RUNBOOK.md` -- provisioning order, anticipated gotchas, verification checklist, teardown.
 - `docs/TALK-NOTES.md` -- the beats, what to say, what's real and what's an honest simplification.
+- `docs/DEMO-SCRIPT.md` -- the full speakable script: every tool explained in the order the
+  audience meets it, one request's end-to-end journey, then all four beats as continuous narration.
 - `k8s/argocd/README.md` -- the GitOps boundary (what's in Git vs. applied directly).
