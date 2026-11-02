@@ -90,6 +90,41 @@ kubectl patch configmap argocd-cm -n argocd --type merge \
 kubectl -n argocd rollout restart deployment/argocd-repo-server
 kubectl -n argocd rollout status deployment/argocd-repo-server --timeout=120s
 
+log "Phase D.5 -- bootstrap every chart's CRDs directly, bypassing ArgoCD's Helm-CRD sync path"
+# Confirmed live, twice (first live run, then again on a from-scratch
+# rebuild): k8s/argocd/argocd-cm-patch.yaml's resource.exclusions --
+# needed to stop ArgoCD's sync from writing an oversized
+# last-applied-configuration annotation on these charts' largest CRDs
+# (argoproj/argo-cd#28421) -- has the side effect of also stopping ArgoCD
+# from ever CREATING these CRDs in the first place on a fresh cluster,
+# since CustomResourceDefinition is now entirely outside its managed-
+# resource pipeline. Every chart that ships its own CRDs needs them
+# applied here, once, out-of-band, before anything downstream can start.
+# See docs/RUNBOOK.md's confirmed-gotchas section for the full history.
+CRD_DIR="$(mktemp -d)"
+helm repo add spire https://spiffe.github.io/helm-charts-hardened/ >/dev/null 2>&1 || true
+helm repo add cloudnative-pg https://cloudnative-pg.github.io/charts >/dev/null 2>&1 || true
+helm repo add kyverno https://kyverno.github.io/kyverno/ >/dev/null 2>&1 || true
+helm repo update spire cloudnative-pg kyverno >/dev/null 2>&1
+helm template spire-crds spire/spire-crds --version 0.6.1 --include-crds 2>/dev/null > "$CRD_DIR/spire-crds.yaml"
+helm template cnpg cloudnative-pg/cloudnative-pg --version 0.29.1 --include-crds 2>/dev/null > "$CRD_DIR/cnpg.yaml"
+helm template kyverno kyverno/kyverno --version 3.9.2 --include-crds 2>/dev/null > "$CRD_DIR/kyverno.yaml"
+helm template eg oci://docker.io/envoyproxy/gateway-helm --version 1.9.3 --include-crds 2>/dev/null > "$CRD_DIR/envoy-gateway.yaml"
+for f in "$CRD_DIR"/*.yaml; do
+  kubectl apply --server-side --force-conflicts -f "$f" >/dev/null
+done
+rm -rf "$CRD_DIR"
+
+# Every Application that owns one of these charts already attempted (and
+# failed) its first sync before these CRDs existed. selfHeal=true means
+# ArgoCD will eventually notice and retry on its own, but only on its
+# background poll interval (~3 min default) -- resync explicitly instead
+# of waiting on that.
+for app in spire-crds spire cloudnative-pg-operator cnpg-resources kyverno-controller kyverno-policies envoy-gateway-controller gateway; do
+  kubectl patch application "$app" -n argocd --type merge \
+    -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"syncStrategy":{"hook":{}}}}}' >/dev/null 2>&1 || true
+done
+
 log "waiting for the controllers ArgoCD just installed (SPIRE, CloudNativePG, Kyverno, Envoy Gateway) -- can take several minutes on a cold cluster"
 # wait_for_resource first on every one of these -- ArgoCD needs real time
 # to clone this repo and sync before any of these resources exist at all,

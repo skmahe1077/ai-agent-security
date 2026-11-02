@@ -4,12 +4,12 @@
 tag, Rego rule, and Kustomize/ArgoCD pattern in it was checked against a real source (`helm
 search repo --versions`, `helm pull`, `opa eval` against real fixtures, the actual Go source of
 Envoy Gateway's CRDs, `jmespath` library tests for the Kyverno expressions) rather than assumed.
-**It has since been run end-to-end against a real EKS cluster** (2026-10-31) -- every
-`scripts/03-verify.sh` check passes (15/15). The real issues that first run found are in
-"confirmed gotchas" below, with what actually happened and the fix now in Git. The "anticipated
-gotchas" section after it is what's left: informed predictions for areas that run cleanly worked
-but haven't been stress-tested (chart version bumps, a from-scratch rehearsal on a different AWS
-account, etc).
+**It has since been run end-to-end against a real EKS cluster twice** (2026-10-31, then again
+from a full teardown/rebuild on 2026-11-02) -- every `scripts/03-verify.sh` check passes (15/15)
+both times. The real issues each run found are in "confirmed gotchas" below, with what actually
+happened and the fix now in Git. The "anticipated gotchas" section after it is what's left:
+informed predictions for areas that run cleanly worked but haven't been stress-tested (chart
+version bumps, a rehearsal on a different AWS account, etc).
 
 ## Confirmed gotchas (found on the first live run, 2026-10-31)
 
@@ -47,6 +47,41 @@ account, etc).
    `scripts/03-verify.sh` anchored at end-of-line (`grep -qE '^(401|403)$'`) always failed
    regardless of the real response. Anchor at start-of-line only when checking output from a
    `kubectl run --rm` pod.
+
+## Confirmed gotchas (found on a full teardown/rebuild, 2026-11-02)
+
+The fixes above all held up on this second run with zero changes needed. Two new, previously
+unseen issues showed up -- both because the first live run never actually started from a
+*completely* empty cluster (it inherited some state from manual debugging along the way).
+
+6. **`resource.exclusions` (gotcha #1 above) stops ArgoCD from installing CRDs at all on a fresh
+   cluster, not just from mishandling large ones.** On 2026-10-31 this was never noticed because
+   by the time `resource.exclusions` was added, every affected chart's CRDs already existed on
+   that cluster (applied manually during the same debugging session) -- `resource.exclusions`
+   only ever had to stop ArgoCD from *re-applying* CRDs that were already correct. On a genuinely
+   fresh cluster there's nothing to fall back on: `spire-crds`, `cloudnative-pg-operator`,
+   `kyverno-controller`, and `envoy-gateway-controller` all report `Synced/Healthy` immediately
+   with precisely nothing to do, while the actual CRDs (`clusterspiffeids.spire.spiffe.io`,
+   `clusters.postgresql.cnpg.io`, `clusterpolicies.kyverno.io`,
+   `httproutes.gateway.networking.k8s.io`, etc.) never get created, and every controller that
+   depends on them crash-loops with "no matches for kind ... in version ...". **Fixed**:
+   `scripts/01-provision.sh`'s new Phase D.5 renders and server-side-applies all four charts' CRDs
+   directly (`helm template <chart> --include-crds | kubectl apply --server-side
+   --force-conflicts`) immediately after the ArgoCD bootstrap, before waiting on any controller.
+   This has to run on *every* fresh provision now, not just once ever -- it is a permanent
+   consequence of keeping `resource.exclusions`, not a one-time bootstrap step.
+7. **The `spire-mgmt` namespace was never actually created by anything persisted in this repo.**
+   It only existed on the first live run because of a one-off manual `kubectl create namespace`
+   made during that session's debugging and never written down anywhere. On the from-scratch
+   rebuild, the `spire` Application's sync failed outright with `namespaces "spire-mgmt" not
+   found`, plus a cascading `no endpoints available for service
+   "spire-controller-manager-webhook"` once retried, since nothing in the namespace had started
+   yet. `spire-crds.yaml` already had `syncOptions: [CreateNamespace=true]`, but that Application's
+   entire resource set is CRDs -- now excluded from ArgoCD's pipeline by gotcha #6's fix above, so
+   it has nothing left to sync and `CreateNamespace` never fires. **Fixed**: added
+   `CreateNamespace=true` to `k8s/argocd/apps/spire.yaml` instead, which still manages real
+   namespaced resources (Deployments, StatefulSets, ServiceAccounts) and so still triggers
+   namespace creation correctly.
 
 ## Provisioning order, and why it's still phased
 
