@@ -17,6 +17,14 @@
   --status-warning:  #fab219;
   --status-serious:  #ec835a;
   --status-critical: #d03b3b;
+
+  /* Storefront brand accent -- separate from the status palette above
+     (which is reserved for order/approval state, not decoration). Used
+     for the hero band, price emphasis, and CTA-ish touches only. */
+  --brand-accent:      #4f46e5;
+  --brand-accent-ink:  #ffffff;
+  --brand-accent-soft: #eef0ff;
+  --hero-grad: linear-gradient(135deg, #312e81 0%, #4f46e5 55%, #6d28d9 100%);
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
@@ -30,6 +38,9 @@
     --baseline:       #383835;
     --border:         rgba(255,255,255,0.10);
     --success-text:   #0ca30c;
+    --brand-accent:      #818cf8;
+    --brand-accent-ink:  #0d0d0d;
+    --brand-accent-soft: #211f3d;
   }
 }
 :root[data-theme="dark"] {
@@ -43,6 +54,9 @@
   --baseline:       #383835;
   --border:         rgba(255,255,255,0.10);
   --success-text:   #0ca30c;
+  --brand-accent:      #818cf8;
+  --brand-accent-ink:  #0d0d0d;
+  --brand-accent-soft: #211f3d;
 }
 
 * { box-sizing: border-box; }
@@ -65,7 +79,8 @@ body {
   top: 0;
   z-index: 40;
 }
-.wordmark { font-size: 1.3rem; font-weight: 700; }
+.wordmark { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.01em; }
+.wordmark::first-letter { color: var(--brand-accent); }
 .topbar-controls { display: flex; align-items: center; gap: 16px; }
 .field-inline { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-secondary); }
 select, input[type="text"] {
@@ -150,44 +165,102 @@ select, input[type="text"] {
 .order-status-shipped { color: var(--status-warning); }
 .order-status-delivered { color: var(--status-good); }
 
-h2 {
-  font-size: 0.95rem;
+/* ---- shop hero --------------------------------------------------------
+   Purely presentational -- a banner above the catalog so the Shop tab
+   reads as a storefront, not a bare grid. No demo data or state lives
+   here, just branding. */
+.shop-hero {
+  background: var(--hero-grad);
+  color: var(--brand-accent-ink, #fff);
+  border-radius: 20px;
+  padding: 40px 36px;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.shop-hero::after {
+  /* a soft decorative glow, not an image -- keeps the hero dependency-free */
+  content: "";
+  position: absolute;
+  inset: -40% -10% auto auto;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(255,255,255,0.16) 0%, transparent 70%);
+  z-index: -1;
+}
+.shop-hero-eyebrow {
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+  margin-bottom: 10px;
+}
+.shop-hero-title {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+}
+.shop-hero-sub {
+  font-size: 0.95rem;
+  max-width: 54ch;
+  opacity: 0.92;
+  line-height: 1.5;
+  margin: 0;
+}
+
+h2 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
-  margin: 24px 0 10px;
+  margin: 24px 0 14px;
 }
 h2:first-child { margin-top: 0; }
 
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
 }
 .product-card {
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 .product-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.14);
+  border-color: var(--brand-accent);
 }
 .product-image {
   aspect-ratio: 4 / 3;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--page-plane);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.5), transparent 55%),
+    var(--page-plane);
   border-bottom: 1px solid var(--border);
   color: var(--text-primary);
+  overflow: hidden;
+  padding: 18px;
 }
-.product-image img { width: 100%; height: 100%; object-fit: cover; }
-.product-body { padding: 14px; }
-.product-card .name { font-weight: 600; margin-bottom: 4px; }
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.18));
+  transition: transform 0.25s ease;
+}
+.product-card:hover .product-image img { transform: scale(1.06); }
+.product-body { padding: 16px; }
+.product-card .name { font-weight: 700; font-size: 1rem; letter-spacing: -0.01em; margin-bottom: 4px; }
 .product-card .description {
   color: var(--text-secondary);
   font-size: 0.8rem;
@@ -195,7 +268,15 @@ h2:first-child { margin-top: 0; }
   margin-bottom: 10px;
   min-height: 2.8em;
 }
-.product-card .price { font-weight: 700; font-size: 1.05rem; }
+.product-card .price {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--brand-accent);
+  background: var(--brand-accent-soft);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
 
 /* ---- floating chat widget ------------------------------------------- */
 
