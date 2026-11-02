@@ -911,23 +911,40 @@ async function playTurnAnimation(events) {
     first.classList.remove("pulse-hit");
   }
 
-  // Every hop after that rides the exact <path> drawn between those two
-  // cards -- confirmed live this previously just jumped the dot in a
-  // straight CSS-transitioned line between card centers, visibly cutting
-  // across the curve drawConnectors() actually drew instead of
-  // following it.
+  // Every hop after that rides a <path>'s actual geometry -- never a raw
+  // style jump. drawConnectors() only draws connectors between ADJACENT
+  // stage columns, so a hop that skips a stage entirely (Policy straight
+  // to Execute, when Approval was bypassed under threshold) has no
+  // pre-drawn path to find via _pathBetween. Confirmed live: that's
+  // exactly the case that looked "stuck at OPA" -- Policy is the stage
+  // right before the skipped one, and the fallback that used to run here
+  // only worked if a CSS transition happened to still be attached and
+  // uninterrupted, which isn't guaranteed. Build a throwaway straight-line
+  // path for exactly this case instead, and animate along that with the
+  // identical, already-correct code -- one animation mechanism for every
+  // hop, no silent fallback branch.
   for (let i = 1; i < path.length; i++) {
     const fromId = path[i - 1];
     const toId = path[i];
+    const fromEl = $(`card-${fromId}`);
     const cardEl = $(`card-${toId}`);
     if (!cardEl) continue;
-    const pathEl = _pathBetween(fromId, toId);
-    if (pathEl) {
-      await _animateDotAlongPath(pulse, pathEl, HOP_TRAVEL_MS);
-    } else {
-      pulse.style.left = `${cardEl.offsetLeft + cardEl.offsetWidth / 2}px`;
-      pulse.style.top = `${cardEl.offsetTop + cardEl.offsetHeight / 2}px`;
+    let pathEl = _pathBetween(fromId, toId);
+    let tempPath = null;
+    if (!pathEl && fromEl) {
+      const graph = $("stage-graph");
+      const from = _rectRelativeTo(fromEl, graph);
+      const to = _rectRelativeTo(cardEl, graph);
+      tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      tempPath.setAttribute(
+        "d",
+        `M ${from.left + from.width} ${from.top + from.height / 2} L ${to.left} ${to.top + to.height / 2}`
+      );
+      $("connector-layer").appendChild(tempPath);
+      pathEl = tempPath;
     }
+    if (pathEl) await _animateDotAlongPath(pulse, pathEl, HOP_TRAVEL_MS);
+    if (tempPath) tempPath.remove();
     cardEl.classList.add("pulse-hit");
     await sleep(HOP_HOLD_MS);
     cardEl.classList.remove("pulse-hit");
