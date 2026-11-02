@@ -13,6 +13,8 @@ executed by something else on their behalf.
 
 ## Architecture
 
+![Architecture diagram: audience through ALB into the EKS cluster, storefront and agent pods in namespace nimbus/agents, Envoy Gateway verifying JWTs and delegating to OPA, mahi-tools fanning out to CloudNativePG and the Kubernetes API, with Kyverno and ArgoCD as cross-cutting admission/GitOps controls](docs/images/architecture-diagram.png)
+
 ```
 audience → browser → ALB → storefront (ns nimbus)
                                │ chat
