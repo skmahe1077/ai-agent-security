@@ -83,6 +83,54 @@ unseen issues showed up -- both because the first live run never actually starte
    namespaced resources (Deployments, StatefulSets, ServiceAccounts) and so still triggers
    namespace creation correctly.
 
+## Confirmed gotchas (found during a full end-to-end rehearsal, 2026-11-02)
+
+The first two were in application/policy code, not infrastructure -- found specifically because
+this was the first time all four beats were walked start to finish live, rather than verified
+piece by piece. The third was found tearing the stack down afterward.
+
+8. **The scale-to-N approval resume never actually applied the approved scale.** `issue_refund`'s
+   resume path threads `approved_by` into mahi-tools via the `X-Approved-By` header, but
+   `scale_deployment`'s did not -- `GatewaySession.scale_deployment()` took no `approved_by`
+   parameter at all, so `handle_resume`'s `"scale"` branch retried the request with no approval
+   evidence. OPA correctly re-denied it with the same `428 approval_required` it gave the first
+   time, which looked like "approval didn't work" rather than the real cause: the retried call was
+   indistinguishable from an unapproved one. Confirmed live by checking
+   `kubectl get deployment storefront -n nimbus -o jsonpath='{.spec.replicas}'` stayed at the
+   pre-approval replica count. **Fixed** in `app/agent/src/agent/session.py` (both
+   `scale_deployment` implementations now take `approved_by`, `GatewaySession`'s forwards it to the
+   existing `_post(..., approved_by=...)` header mechanism) and
+   `app/agent/src/agent/deterministic_engine.py` (`handle_resume` now passes it through).
+9. **Kyverno's `require-spiffe-identity` policy was also blocking pod `DELETE`**, not just
+   `CREATE`/`UPDATE` as intended -- surfaced as `replicaset-controller` logging `FailedDelete` on
+   every rollout in the `agents` namespace (including a routine `kubectl set image` during this
+   rehearsal). Root cause: a `DELETE` admission request carries no `request.object` (only
+   `request.oldObject`), so both rules' JMESPath context variables silently fell back to their
+   `default: 0`, which satisfies each rule's deny condition. `resources.operations` is **not** a
+   field this Kyverno CRD's schema recognises -- setting it is silently pruned by the apiserver
+   with no error, so that was tried and discarded live before finding the actual fix. **Fixed** in
+   `policy/kyverno/require-spiffe-identity.yaml`: both rules now carry a `preconditions` gate on
+   `{{ request.operation }}` (`AnyIn: [CREATE, UPDATE]`), the Kyverno-documented way to scope a
+   rule to specific admission operations. Also confirmed live that a `kubectl apply` of the fix
+   directly to the cluster gets silently reverted by ArgoCD's `selfHeal` within seconds if the fix
+   isn't committed to Git first -- the policy only actually took effect once pushed and synced.
+10. **`terraform destroy` failed twice in a row on the VPC/subnet step with `DependencyViolation`**,
+    after EKS, the node groups, ArgoCD, and the storefront's ALB had all already been destroyed
+    cleanly. Root cause: Envoy Gateway's own `Gateway` resource provisions its own Service
+    `type=LoadBalancer` (an NLB) to receive traffic -- entirely separate from the storefront's ALB,
+    which `scripts/destroy.sh` already deleted first via its Ingress. Terraform never created that
+    NLB (an in-cluster controller did), so it never destroys it either; once EKS was gone, nothing
+    was left to clean it up, and its ENIs blocked the two private subnets from deleting. After
+    manually deleting the NLB and retrying, the VPC itself then failed the same way for the same
+    reason one level up: the same controller's security groups (`k8s-envoygat-...`,
+    `k8s-default-...`, `k8s-traffic-...`) outlived their NLB and blocked the VPC. **Fixed** in
+    `scripts/destroy.sh`: before `terraform destroy` runs, sweep both load balancers and security
+    groups tagged `kubernetes.io/cluster/<eks_cluster_name>=owned` -- the standard tag every
+    Kubernetes AWS load-balancer controller applies, not just the AWS Load Balancer Controller --
+    and wait for their ENIs to clear before touching the security groups. Swept before terraform
+    runs, not after, since by the time terraform reports the error the cluster that could otherwise
+    clean these up from inside Kubernetes is already gone.
+
 ## Provisioning order, and why it's still phased
 
 Terraform only needs two applies, not one, for a specific reason: the

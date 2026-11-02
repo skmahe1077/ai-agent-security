@@ -16,6 +16,20 @@
 # `length(@)` deliberately, so the filter runs on a concrete list rather
 # than chaining as a JMESPath projection, which does not reliably compose
 # with a trailing function call.
+#
+# Each rule carries a `preconditions` gate on `request.operation` -- confirmed
+# live that Kyverno's pod webhook also intercepts DELETE (and CONNECT) in
+# this namespace regardless of what's declared under `match`, and
+# `resources.operations` is not a field this CRD's schema recognises (the
+# apiserver silently prunes it, so it looked set but had zero effect).
+# DELETE admission requests carry no `request.object` (only
+# `request.oldObject`), so every JMESPath context here silently fell back
+# to its `default: 0`, which satisfied both deny conditions and blocked the
+# delete outright. That turned into replicaset-controller's "FailedDelete"
+# on every rollout in this namespace -- the policy was correctly rejecting
+# non-compliant pods at admission, and incorrectly rejecting the deletion
+# of compliant ones too. `preconditions` on `request.operation` is the
+# idiom Kyverno itself documents for this.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -30,6 +44,11 @@ spec:
           - resources:
               kinds: ["Pod"]
               namespaces: ["agents"]
+      preconditions:
+        all:
+          - key: "{{ request.operation }}"
+            operator: AnyIn
+            value: ["CREATE", "UPDATE"]
       exclude:
         any:
           # mahi-tools and opa are legitimate agents-namespace workloads
@@ -66,6 +85,11 @@ spec:
           - resources:
               kinds: ["Pod"]
               namespaces: ["agents"]
+      preconditions:
+        all:
+          - key: "{{ request.operation }}"
+            operator: AnyIn
+            value: ["CREATE", "UPDATE"]
       exclude:
         any:
           - resources:

@@ -71,9 +71,11 @@ breakdown). Run `scripts/destroy.sh` after every rehearsal. `scripts/03-verify.s
 go/no-go gate -- run it after provisioning and again the morning of the talk.
 
 This full stack has been provisioned end-to-end on a real EKS cluster, with every
-`scripts/03-verify.sh` check passing (15/15). See `docs/RUNBOOK.md`'s "confirmed gotchas" for the
-real issues that first live run found and fixed -- an ArgoCD CRD-sync regression, an OPA
-ConfigMap-symlink crash, and the ECR-repo prerequisite above.
+`scripts/03-verify.sh` check passing (15/15), and all four beats rehearsed live start to finish.
+See `docs/RUNBOOK.md`'s "confirmed gotchas" for the real issues each run found and fixed -- an
+ArgoCD CRD-sync regression, an OPA ConfigMap-symlink crash, the ECR-repo prerequisite above, a
+scale-approval resume bug, and a Kyverno policy that was blocking pod deletion, not just rejecting
+non-compliant pods at admission as intended.
 
 ## The four beats
 

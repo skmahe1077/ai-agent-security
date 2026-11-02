@@ -4,19 +4,26 @@
 # ArgoCD installed down with it), the VPC. Run this after every
 # rehearsal.
 #
-# Three well-known AWS/Kubernetes teardown hazards, guarded against
+# Four well-known AWS/Kubernetes teardown hazards, guarded against
 # explicitly rather than left to `terraform destroy` alone:
 #   1. The storefront Ingress must be deleted first so the AWS Load
 #      Balancer Controller deletes the ALB + target groups itself.
 #      Deleting the controller (which `terraform destroy` does) does NOT
 #      clean up an ALB whose Ingress still exists.
-#   2. SPIRE's AND CloudNativePG's PVCs must be deleted explicitly. Helm
+#   2. Envoy Gateway's own Gateway resource provisions its own NLB (a
+#      Service type=LoadBalancer, separate from the storefront's ALB
+#      above) -- confirmed live that this, and the security groups the
+#      same controller creates for it, survive `terraform destroy` as
+#      orphans and block the VPC's subnets, then the VPC itself, from
+#      deleting. Swept by tag (`kubernetes.io/cluster/<name>=owned`)
+#      before `terraform destroy` runs, not after.
+#   3. SPIRE's AND CloudNativePG's PVCs must be deleted explicitly. Helm
 #      does not delete StatefulSet volumeClaimTemplate PVCs on uninstall
 #      (SPIRE), and the CloudNativePG operator does not delete its
 #      Cluster's PVC on namespace deletion either (CloudNativePG) --
 #      deleting the EKS cluster does not delete the EBS volumes behind
 #      either one.
-#   3. Deleting a PVC doesn't mean the EBS volume behind it is gone
+#   4. Deleting a PVC doesn't mean the EBS volume behind it is gone
 #      immediately -- the CSI driver needs time to actually process the
 #      deletion, and if EKS (and the CSI driver running on it) is
 #      destroyed before that finishes, the volume survives as an orphan.
@@ -36,6 +43,55 @@ for i in $(seq 1 60); do
   [ -z "$remaining" ] && break
   sleep 5
 done
+
+# Envoy Gateway's own Gateway resource provisions ITS OWN Service
+# type=LoadBalancer (an NLB), entirely separate from the storefront's ALB
+# above -- terraform never manages it, so it (and the security groups the
+# same controller creates for it) survive `terraform destroy` as orphans
+# and their ENIs block the VPC's subnets, then the security groups
+# themselves block the VPC, from deleting at all. Confirmed the hard way:
+# a first `terraform destroy` got through EKS/ALB/nodes cleanly and then
+# failed at the VPC/subnet step with DependencyViolation, twice in a row,
+# once for the subnets' leftover NLB ENIs and once more for the VPC's
+# leftover security groups once those ENIs were gone. Sweep both, tagged
+# by the standard `kubernetes.io/cluster/<name>=owned` convention every
+# Kubernetes AWS cloud-provider/load-balancer controller uses, BEFORE
+# `terraform destroy` runs -- not after, since by the time terraform
+# reports the error the EKS cluster (and anything that could clean these
+# up from inside Kubernetes) is already gone.
+log "deleting any load balancers an in-cluster controller provisioned for this EKS cluster (not just the storefront's ALB)"
+CLUSTER_NAME="$(terraform -chdir="$TF_DIR" output -raw eks_cluster_name 2>/dev/null || true)"
+if [ -n "$CLUSTER_NAME" ]; then
+  lb_arns="$(aws resourcegroupstaggingapi get-resources \
+    --resource-type-filters elasticloadbalancing:loadbalancer \
+    --tag-filters "Key=kubernetes.io/cluster/${CLUSTER_NAME},Values=owned" \
+    --query 'ResourceTagMappingList[].ResourceARN' --output text 2>/dev/null || true)"
+  for arn in $lb_arns; do
+    warn "deleting load balancer $arn (provisioned by an in-cluster controller, not terraform)"
+    aws elbv2 delete-load-balancer --load-balancer-arn "$arn" 2>&1 || true
+  done
+  if [ -n "$lb_arns" ]; then
+    log "waiting for their ENIs to clear before touching security groups"
+    for i in $(seq 1 30); do
+      remaining="$(aws ec2 describe-network-interfaces \
+        --filters "Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=owned" \
+        --query 'length(NetworkInterfaces)' --output text 2>/dev/null || echo 0)"
+      [ "$remaining" = "0" ] && break
+      sleep 10
+    done
+  fi
+
+  log "deleting any security groups an in-cluster controller provisioned for this EKS cluster"
+  sg_ids="$(aws ec2 describe-security-groups \
+    --filters "Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=owned" \
+    --query 'SecurityGroups[].GroupId' --output text 2>/dev/null || true)"
+  for sg in $sg_ids; do
+    warn "deleting security group $sg (provisioned by an in-cluster controller, not terraform)"
+    aws ec2 delete-security-group --group-id "$sg" 2>&1 || true
+  done
+else
+  warn "couldn't read eks_cluster_name from terraform output -- skipping the tagged load-balancer/security-group sweep. If 'terraform destroy' below fails on the VPC or its subnets with DependencyViolation, check for orphaned 'k8s-*' load balancers and security groups by hand."
+fi
 
 log "deleting SPIRE's and CloudNativePG's PVCs"
 kubectl -n spire-mgmt delete pvc --all --ignore-not-found --timeout=180s 2>/dev/null || true

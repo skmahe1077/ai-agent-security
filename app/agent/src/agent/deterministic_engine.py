@@ -160,7 +160,7 @@ class DeterministicEngine:
                 "type": "approval_granted", "approval_id": pending["correlation_id"], "approved_by": approved_by,
                 "message": f"{approved_by} approved scaling to {pending['replicas']} replicas",
             }]
-            reply, action_events, _ = self.session.scale_deployment(pending["replicas"])
+            reply, action_events, _ = self.session.scale_deployment(pending["replicas"], approved_by=approved_by)
             return AgentTurnResult(reply=reply, events=events + action_events)
 
         events = [{

@@ -145,9 +145,9 @@ class GatewaySession:
         })
         return payload["reply"], events + payload["events"]
 
-    def scale_deployment(self, replicas: int) -> tuple[str, list[dict], bool]:
+    def scale_deployment(self, replicas: int, approved_by: str | None = None) -> tuple[str, list[dict], bool]:
         events = [e for e in [self.identity_event()] if e]
-        status, payload = self._post("/tools/scale_deployment", {"replicas": replicas})
+        status, payload = self._post("/tools/scale_deployment", {"replicas": replicas}, approved_by=approved_by)
         return payload["reply"], events + payload["events"], status == 428
 
     def status(self) -> dict:
@@ -243,7 +243,7 @@ class StaticDBSession:
             "message": f"⚠ {issued_by} read customers.email/phone for {row['name']} -- static credential has no scoping, no identity, no record of who asked",
         }]
 
-    def scale_deployment(self, replicas: int) -> tuple[str, list[dict], bool]:
+    def scale_deployment(self, replicas: int, approved_by: str | None = None) -> tuple[str, list[dict], bool]:
         return "The legacy support agent doesn't have cluster access.", [{
             "type": "denied", "resource": "deployments/scale", "message": "agent-insecure has no Kubernetes RBAC at all",
         }], False
