@@ -810,6 +810,19 @@ function hopPath(events) {
   const path = [_identityCardId()];
   const deniedResources = events.filter((e) => e.type === "denied").map((e) => e.resource);
   if (events.length === 0) return path; // small talk -- nothing travelled anywhere
+
+  // The legacy agent has no equivalent of any of this: a static password
+  // connects straight to Postgres, with no gateway and no policy check in
+  // between -- confirmed live, the backend never even emits an identity
+  // event for this agent, matching "no identity, just a password." Routing
+  // its pulse through Gateway/OPA cards would visually contradict beat 1's
+  // entire point (this agent has no verification layer at all).
+  if (state.agent === "insecure") {
+    if (events.some((e) => ["refund_issued", "scale_applied", "scope_violation"].includes(e.type))
+        || deniedResources.length) path.push("database");
+    return path;
+  }
+
   if (deniedResources.includes("identity")) {
     path.push("envoy-gateway");
     return path; // refused at the gateway -- the journey stops here
