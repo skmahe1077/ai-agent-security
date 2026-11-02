@@ -15,34 +15,6 @@ executed by something else on their behalf.
 
 ![Architecture diagram: audience through ALB into the EKS cluster, storefront and agent pods in namespace nimbus/agents, Envoy Gateway verifying JWTs and delegating to OPA, mahi-tools fanning out to CloudNativePG and the Kubernetes API, with Kyverno and ArgoCD as cross-cutting admission/GitOps controls](docs/images/architecture-diagram.png)
 
-```
-audience → browser → ALB → storefront (ns nimbus)
-                               │ chat
-                               ▼
-                 agent pods (ns agents) -- order-agent │ refund-agent
-                 SPIRE JWT-SVID via spiffe-helper sidecar, 300s TTL
-                               │ HTTP POST /tools/<name>, Authorization: Bearer <JWT-SVID>
-                               ▼
-        ┌──────────────────────────────────────────────────────┐
-        │  Envoy Gateway  (Gateway API)   ── THE AGENT GATEWAY │
-        │  • SecurityPolicy.jwt: validate vs SPIRE's own JWKS  │
-        │    (remoteJWKS → SPIRE's OIDC Discovery Provider)    │
-        │  • SecurityPolicy.extAuth → OPA (ext_authz)          │
-        └──────────────────────────────────────────────────────┘
-                   │ only OPA-allowed tool calls pass
-                   ▼
-          mahi-tools HTTP service (ns agents)
-          lookup_order · issue_refund · lookup_customer_pii · scale_deployment
-                   │                               │
-                   ▼                               ▼
-      CloudNativePG cluster (ns data)        Kubernetes API
-      login roles via managed.roles,         own ServiceAccount, RBAC narrowed
-      GRANTs on group roles                  to apps/deployments/scale on one name
-
-  cross-cutting:  OPA (decisions + decision log) · Kyverno (admission)
-                  ArgoCD (everything in-cluster comes from Git) · SPIRE (identity)
-```
-
 Every component is **Apache 2.0, open source, and CNCF-governed** -- SPIRE/SPIFFE, Open Policy
 Agent, and Argo CD are CNCF graduated; Envoy (and Envoy Gateway, built on it) is CNCF graduated;
 Kyverno is CNCF incubating; CloudNativePG is CNCF Sandbox (incubation under review). No licence
