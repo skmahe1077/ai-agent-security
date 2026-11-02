@@ -535,7 +535,11 @@ h2:first-child { margin-top: 0; }
   position: relative;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 18px;
+  /* Wider than a typical card gap on purpose -- the dashed connector
+     lines (drawn in the space between columns) need enough room to
+     actually read as a dashed line; at 18px they were too short a
+     segment to look like anything but a sliver. */
+  gap: 40px;
   /* Dedicated lane above the column headers for the bypass arc -- it must
      never share vertical space with "N. Label" text (see
      .bypass-arc-layer's matching height below). */
