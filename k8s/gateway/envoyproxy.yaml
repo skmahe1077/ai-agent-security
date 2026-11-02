@@ -1,0 +1,21 @@
+# Fixes a real bug, confirmed live: Envoy Gateway's documented DEFAULT
+# HTTP filter order runs ext_authz BEFORE jwt_authn
+# (https://gateway.envoyproxy.io/ -- "Customize EnvoyProxy" / filterOrder
+# docs). That means OPA's ext_authz call happens before the JWT has even
+# been validated, so SecurityPolicy.spec.jwt.providers[].claimToHeaders
+# (k8s/gateway/security-policy.yaml) hasn't fired yet -- X-Spiffe-Id is
+# simply absent from what OPA receives. Confirmed by inspecting the live
+# Envoy proxy's own /config_dump: the filter chain was literally
+# [ext_authz, jwt_authn, router], and OPA's decision log showed every
+# request missing x-spiffe-id entirely despite a valid Authorization
+# bearer token being present. filterOrder is the documented, supported
+# way to override Envoy Gateway's default ordering.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: mahi-gateway-proxy-config
+  namespace: envoy-gateway-system
+spec:
+  filterOrder:
+    - name: envoy.filters.http.jwt_authn
+      before: envoy.filters.http.ext_authz

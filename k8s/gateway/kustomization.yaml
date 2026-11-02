@@ -12,6 +12,7 @@ kind: Kustomization
 
 resources:
   - gatewayclass.yaml
+  - envoyproxy.yaml
   - gateway.yaml
   - httproute.yaml
   - security-policy.yaml
