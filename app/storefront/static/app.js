@@ -125,32 +125,31 @@ function fmtTime(ts) {
 
 // ---------- catalog ----------
 
-// Real product photos (Wikimedia Commons, freely licensed -- see
-// static/images/ATTRIBUTION.md), bundled locally and served as static
-// files -- not hotlinked to an external host, so nothing fails to load if
-// the venue Wi-Fi drops mid-talk. Keyed by a keyword matched against the
-// product name, not product_id, so new catalog rows pick up a sensible
-// image for free. These are generic category photos (a hoodie, a
-// backpack, a cap), not photos of the actual CNCF-branded items -- the
-// real store's own product photography is copyrighted, not freely
-// licensed, so it isn't reused here. Two pairs intentionally share a
-// photo (the two hoodies, the two caps) rather than show a second,
-// visually-unrelated item for the sake of a distinct file.
+// Official CNCF/project logos (cncf/artwork, reused under the Linux
+// Foundation trademark usage guidelines -- see static/images/
+// ATTRIBUTION.md), bundled locally and served as static files -- not
+// hotlinked to an external host, so nothing fails to load if the venue
+// Wi-Fi drops mid-talk. Keyed by a keyword matched against the product
+// name, not product_id, so new catalog rows pick up a sensible image for
+// free. Generically-"CNCF"-branded items (not a specific sub-project's
+// own merch) are assigned one of the projects this demo's own security
+// stack actually runs -- a deliberate easter egg, not an accuracy claim
+// about which project the real store item ships with.
 const PRODUCT_IMAGES = {
-  "full zip":      "hoodie.jpg",      // Custom Kubernetes Full Zip Hoodie
-  samsonite:       "backpack.png",    // Samsonite Arcway Laptop Backpack
-  parka:           "parka.jpg",       // Eddie Bauer Hooded Soft Shell Parka
-  richardson:      "cap.jpg",         // CNCF Richardson Low Pro Trucker
-  corduroy:        "cap.jpg",         // Heritage Corduroy Trucker Cap
-  beanie:          "beanie.jpg",      // Kubernetes Custom Woven Beanie
-  kruger:          "fleece.jpg",      // Kruger Fleece Crew
-  helm:            "crewneck.jpg",    // Helm - Embossed Midweight Crewneck
-  phippy:          "tee.jpg",         // Phippy & Friends Core Cotton Tee
-  somoto:          "longsleeve.jpg",  // SOMOTO Eco Long Sleeve Tee
-  "cooper dry":    "hoodie.jpg",      // Stanley/Stella Cooper Dry Hoodie
-  illustrated:     "book.jpg",        // Illustrated Children's Guide to Kubernetes
-  vest:            "vest.jpg",        // Eddie Bauer Fleece Vest
-  magnet:          "magnet.jpg",      // Car Magnet - CNCF
+  "full zip":      "kubernetes.svg",   // Custom Kubernetes Full Zip Hoodie
+  samsonite:       "cncf.svg",         // Samsonite Arcway Laptop Backpack
+  parka:           "envoy.svg",        // Eddie Bauer Hooded Soft Shell Parka -- this demo's gateway
+  richardson:      "opa.svg",          // CNCF Richardson Low Pro Trucker -- this demo's policy engine
+  corduroy:        "spiffe.svg",       // Heritage Corduroy Trucker Cap -- this demo's identity layer
+  beanie:          "kubernetes.svg",   // Kubernetes Custom Woven Beanie
+  kruger:          "kyverno.svg",      // Kruger Fleece Crew -- this demo's admission control
+  helm:            "helm.svg",         // Helm - Embossed Midweight Crewneck
+  phippy:          "phippy.svg",       // Phippy & Friends Core Cotton Tee
+  somoto:          "cloudnativepg.svg",// SOMOTO Eco Long Sleeve Tee -- this demo's database
+  "cooper dry":    "argo.svg",         // Stanley/Stella Cooper Dry Hoodie -- this demo's GitOps
+  illustrated:     "kubernetes.svg",   // Illustrated Children's Guide to Kubernetes
+  vest:            "cncf.svg",         // Eddie Bauer Fleece Vest
+  magnet:          "cncf.svg",         // Car Magnet - CNCF
 };
 
 function _imageFor(name) {

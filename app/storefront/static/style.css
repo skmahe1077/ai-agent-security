@@ -243,21 +243,20 @@ h2:first-child { margin-top: 0; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--page-plane);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.5), transparent 55%),
+    var(--page-plane);
   border-bottom: 1px solid var(--border);
   color: var(--text-primary);
   overflow: hidden;
+  padding: 18px;
 }
 .product-image img {
-  /* No drop-shadow here -- these are opaque product photos (their own
-     white/grey studio background baked in), not transparent logos. A
-     drop-shadow filter on an opaque rectangular image just outlines the
-     whole rectangle, which reads as a box, not a product. */
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.18));
   transition: transform 0.25s ease;
 }
 .product-card:hover .product-image img { transform: scale(1.06); }
