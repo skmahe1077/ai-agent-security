@@ -59,7 +59,7 @@ const STAGES = [
   {
     id: "approval", num: 4, label: "Approval", icon: "🧑‍⚖️",
     eventTypes: ["approval_requested", "approval_granted"],
-    what: "Refunds over £100 (and scale requests over a small replica ceiling) pause here for a human to approve. The approval card is populated from a human identity the presenter cached once (scripts/presenter-login.sh) -- not a free-text box. Approving forwards that name to mahi-tools as a plain, recorded X-Approved-By header; it is NOT cryptographically verified (no Vault OBO in this build), an honest simplification said plainly if asked. Under the threshold, this stage is bypassed entirely -- shown as a bypass arc, not skipped silently.",
+    what: "Refunds over £100 (and scale requests over a small replica ceiling) pause here for a human to approve. The approval card is populated from a human identity the presenter cached once (scripts/human-approval-login.sh) -- not a free-text box. Approving forwards that name to mahi-tools as a plain, recorded X-Approved-By header; it is NOT cryptographically verified (no Vault OBO in this build), an honest simplification said plainly if asked. Under the threshold, this stage is bypassed entirely -- shown as a bypass arc, not skipped silently.",
     why: "The action and the authorization are the same auditable event -- recorded in the refunds row itself (issued_by, approved_by, correlation_id), not two separate logs to correlate by hand.",
     tags: ["human-in-the-loop", "X-Approved-By"],
     cards: [{ id: "approval-card", label: "Approval", icon: "🧑‍⚖️", sub: "human sign-off" }],
@@ -330,7 +330,7 @@ function handleAgentResponse(resp) {
   }
 }
 
-// The storefront caches a human identity once (scripts/presenter-login.sh
+// The storefront caches a human identity once (scripts/human-approval-login.sh
 // -> POST /api/admin/human-token), and this card just reflects that
 // cache's status -- it never collects or sends a name itself any more.
 // Polled on an interval while the card is visible so "expires in" counts
@@ -352,7 +352,7 @@ async function refreshHumanToken() {
       identityEl.className = "approval-identity ok";
       btn.disabled = false;
     } else {
-      identityEl.textContent = "no human credential cached -- run scripts/presenter-login.sh";
+      identityEl.textContent = "no human credential cached -- run scripts/human-approval-login.sh";
       identityEl.className = "approval-identity alert";
       btn.disabled = true;
     }

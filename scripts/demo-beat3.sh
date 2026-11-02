@@ -27,8 +27,8 @@ for e in d.get('events', []):
 "
 }
 
-log "presenter-login: caching '$APPROVER' as the approver (NOT a real IdP login)"
-"$(dirname "${BASH_SOURCE[0]}")/presenter-login.sh" "$APPROVER"
+log "human-approval-login: caching '$APPROVER' as the approver (NOT a real IdP login)"
+"$(dirname "${BASH_SOURCE[0]}")/human-approval-login.sh" "$APPROVER"
 echo
 
 log "Ruba asks for a £450 refund on order #1044 -- well over the auto-approval limit"

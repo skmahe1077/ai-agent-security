@@ -157,14 +157,14 @@ def api_chat(req: ChatRequest):
 
 
 # ---- human-token cache -------------------------------------------------
-# scripts/presenter-login.sh declares "a human is present, call them X"
+# scripts/human-approval-login.sh declares "a human is present, call them X"
 # once before a demo window -- NOT a real IdP login. There is no Vault OBO
 # behind this any more: the cached display name is forwarded as a plain
 # X-Approved-By header on the agent's retry (session.py), checked by OPA
 # and recorded in the refunds row, not cryptographically verified. Say so
 # plainly if asked -- it's an honest simplification now that Vault is
 # gone, not a hidden one.
-_HUMAN_TOKEN_TTL_SECONDS = 1800  # 30 minutes -- long enough for a rehearsal, short enough to force a fresh presenter-login before the real talk
+_HUMAN_TOKEN_TTL_SECONDS = 1800  # 30 minutes -- long enough for a rehearsal, short enough to force a fresh human-approval-login before the real talk
 _human_token: dict | None = None  # {display_name, cached_at}
 
 
@@ -216,7 +216,7 @@ def api_resume(req: ResumeRequest):
     if req.agent == "secure":
         token = _valid_human_token()
         if token is None:
-            raise HTTPException(409, "no human credential cached -- run scripts/presenter-login.sh")
+            raise HTTPException(409, "no human credential cached -- run scripts/human-approval-login.sh")
         body["approved_by"] = token["display_name"]
     else:
         body["approved_by"] = req.approved_by or "anonymous"
