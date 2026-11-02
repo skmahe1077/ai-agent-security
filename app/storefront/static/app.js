@@ -142,10 +142,10 @@ const PRODUCT_IMAGES = {
   speaker: "speaker.jpg",
   sleeve: "sleeve.jpg",
   hub: "hub.jpg",
-  iphone: "iphone.jpg",
+  iphone: "iphone.png",
   macbook: "macbook.jpg",
   airpods: "airpods.jpg",
-  watch: "applewatch.jpg",
+  watch: "applewatch.png",
 };
 
 function _imageFor(name) {
