@@ -780,6 +780,14 @@ function renderStageGraph() {
     }
   }
   if (state.openStage) renderStageDetail(state.openStage);
+  // Card subtitles just changed above, which can change card heights
+  // (flex reflow) and therefore where every card actually sits --
+  // confirmed live: drawConnectors() was previously only re-run on mode
+  // switch and window resize, never after a turn's own text updates, so
+  // the pulse in playTurnAnimation (called right after this, in
+  // applyEvents) was faithfully riding paths whose geometry no longer
+  // matched the cards' real positions.
+  drawConnectors();
 }
 
 // Which identity card the pulse should visit -- whichever agent actually
