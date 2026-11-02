@@ -568,11 +568,23 @@ h2:first-child { margin-top: 0; }
      #0a0e1a page-plane -- confirmed live, effectively invisible (well
      under WCAG's 3:1 minimum for graphical objects). text-secondary
      reads clearly without competing with the bright --status-good pulse
-     that travels along these same lines. */
+     that travels along these same lines. Dashed (not solid) so the path
+     itself reads as "a line a dot could travel along" even with no
+     turn in flight, and so the dash-offset animation below has
+     something to animate. */
   fill: none;
   stroke: var(--text-secondary);
   stroke-width: 1.5;
+  stroke-dasharray: 4 4;
   opacity: 0.55;
+  animation: connector-flow 1.2s linear infinite;
+}
+/* Dashes creep from end to start, i.e. in the direction traffic actually
+   flows (card N -> N+1) -- a cheap, constant "something is live here"
+   cue independent of the pulse dot, which only appears during a real
+   turn. Purely decorative; no state depends on it. */
+@keyframes connector-flow {
+  to { stroke-dashoffset: -16; }
 }
 .connector-arrowhead-fill { fill: var(--text-secondary); opacity: 0.55; }
 .stage-col-head { display: flex; align-items: center; gap: 8px; }

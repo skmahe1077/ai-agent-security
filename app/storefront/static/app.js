@@ -701,6 +701,12 @@ function drawConnectors() {
         path.setAttribute("class", "connector-line");
         path.setAttribute("marker-end", "url(#connector-arrowhead)");
         path.setAttribute("d", `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
+        // Tagged by the exact card pair it connects, not just drawn --
+        // playTurnAnimation looks these up so the pulse can travel along
+        // this path's actual curve (getPointAtLength) instead of cutting
+        // a straight diagonal line between card centers.
+        path.dataset.from = fromEl.id.replace(/^card-/, "");
+        path.dataset.to = toEl.id.replace(/^card-/, "");
         svg.appendChild(path);
       }
     }
@@ -842,6 +848,36 @@ function updateBypassArc(show) {
   label.classList.remove("hidden");
 }
 
+// The exact <path> drawConnectors() drew between these two cards, if
+// any -- tagged with data-from/data-to at draw time (see drawConnectors).
+function _pathBetween(fromId, toId) {
+  const svg = $("connector-layer");
+  if (!svg) return null;
+  return svg.querySelector(`path.connector-line[data-from="${fromId}"][data-to="${toId}"]`);
+}
+
+const HOP_TRAVEL_MS = 380;
+const HOP_HOLD_MS = 160;
+
+// Rides pathEl's actual curve via getPointAtLength -- not a CSS
+// left/top transition between two points, which cuts a straight
+// diagonal through a curved connector instead of following it.
+function _animateDotAlongPath(pulse, pathEl, duration) {
+  return new Promise((resolve) => {
+    const total = pathEl.getTotalLength();
+    const start = performance.now();
+    function frame(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const pt = pathEl.getPointAtLength(t * total);
+      pulse.style.left = `${pt.x}px`;
+      pulse.style.top = `${pt.y}px`;
+      if (t < 1) requestAnimationFrame(frame);
+      else resolve();
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
 // A paced *replay* of the real event sequence, not a live network
 // capture -- the backend events for a turn all arrive in one HTTP
 // response, not a stream. Runs concurrently with the instant text/state
@@ -855,13 +891,37 @@ async function playTurnAnimation(events) {
   updateBypassArc(path.includes("database") && !path.includes("approval-card"));
 
   pulse.classList.remove("hidden");
-  for (const cardId of path) {
-    const cardEl = $(`card-${cardId}`);
+
+  // First card is the turn's starting identity -- no incoming connector
+  // to ride, just place the dot there directly.
+  const first = $(`card-${path[0]}`);
+  if (first) {
+    pulse.style.left = `${first.offsetLeft + first.offsetWidth / 2}px`;
+    pulse.style.top = `${first.offsetTop + first.offsetHeight / 2}px`;
+    first.classList.add("pulse-hit");
+    await sleep(HOP_HOLD_MS);
+    first.classList.remove("pulse-hit");
+  }
+
+  // Every hop after that rides the exact <path> drawn between those two
+  // cards -- confirmed live this previously just jumped the dot in a
+  // straight CSS-transitioned line between card centers, visibly cutting
+  // across the curve drawConnectors() actually drew instead of
+  // following it.
+  for (let i = 1; i < path.length; i++) {
+    const fromId = path[i - 1];
+    const toId = path[i];
+    const cardEl = $(`card-${toId}`);
     if (!cardEl) continue;
-    pulse.style.left = `${cardEl.offsetLeft + cardEl.offsetWidth / 2}px`;
-    pulse.style.top = `${cardEl.offsetTop + cardEl.offsetHeight / 2}px`;
+    const pathEl = _pathBetween(fromId, toId);
+    if (pathEl) {
+      await _animateDotAlongPath(pulse, pathEl, HOP_TRAVEL_MS);
+    } else {
+      pulse.style.left = `${cardEl.offsetLeft + cardEl.offsetWidth / 2}px`;
+      pulse.style.top = `${cardEl.offsetTop + cardEl.offsetHeight / 2}px`;
+    }
     cardEl.classList.add("pulse-hit");
-    await sleep(420);
+    await sleep(HOP_HOLD_MS);
     cardEl.classList.remove("pulse-hit");
   }
   await sleep(450);
