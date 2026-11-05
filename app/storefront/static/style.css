@@ -120,8 +120,14 @@ select, input[type="text"] {
 /* The Agentic Workflow tab is a wide, big-on-a-projector dashboard, not a
    narrow stepper -- 5 stage columns need real estate, and this is the
    panel shown live on stage. Matches the Shop tab's own container cap
-   (.layout's max-width) rather than a separate narrower one. */
-#tab-flow.panel { max-width: 1400px; margin: 0 auto; }
+   (.layout's max-width) rather than a separate narrower one.
+
+   Left-aligned, not centered, with a right margin reserving the chat
+   widget's own footprint (.chat-widget: 360px wide + 24px inset) -- the
+   chat widget is position:fixed against the viewport, so opening it while
+   this panel was centered could cover its rightmost stage column. Left-
+   aligning plus the reserved margin keeps the whole panel clear of it. */
+#tab-flow.panel { max-width: 1400px; margin: 0; margin-right: 400px; }
 
 .demo-controls {
   display: flex;
