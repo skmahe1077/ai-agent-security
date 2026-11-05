@@ -15,6 +15,7 @@
 //   { type: "approval_granted", approval_id, approved_by, message }
 //   { type: "refund_issued", order_id, amount_pence, message }
 //   { type: "scale_applied", replicas, deployment, message }
+//   { type: "order_lookup", order_id, message }  -- a successful order-status read reached the database
 //   { type: "info" | "error", message }
 // Every event also carries `ts` (epoch seconds), added by the storefront if
 // the agent didn't set one.
@@ -65,7 +66,7 @@ const STAGES = [
     cards: [{ id: "approval-card", label: "Approval", icon: "🧑‍⚖️", sub: "human sign-off" }],
   },
   {
-    id: "execute", num: 5, label: "Execute", icon: "🗄️", eventTypes: ["refund_issued", "scale_applied", "scope_violation"],
+    id: "execute", num: 5, label: "Execute", icon: "🗄️", eventTypes: ["refund_issued", "scale_applied", "scope_violation", "order_lookup"],
     what: "mahi-tools runs the action as a least-privileged Postgres login role (joined to mahi_order_grp or mahi_refund_grp -- see k8s/cnpg/cluster.yaml) or against the Kubernetes API with RBAC narrowed to one Deployment's scale subresource. Ask for something outside scope (another customer's PII, a refund the role has no grant for) and Postgres itself refuses it, the same mechanism every time -- the last line of defence underneath Gateway and Policy, not a substitute for them.",
     why: "The boundary is enforced by the database's own grants and Kubernetes' own RBAC -- not a special case in anyone's code that someone could forget to add.",
     tags: ["PostgreSQL GRANTs", "Kubernetes RBAC"],
@@ -539,7 +540,7 @@ function _actorTag(e) {
   if (e.type === "identity") return "agent";
   if (e.type === "denied" && (e.resource === "identity" || e.resource === "policy")) return "gateway";
   if (["approval_requested", "approval_granted", "approval_required"].includes(e.type)) return "gateway";
-  if (["refund_issued", "scale_applied", "denied", "scope_violation"].includes(e.type)) return "postgres";
+  if (["refund_issued", "scale_applied", "denied", "scope_violation", "order_lookup"].includes(e.type)) return "postgres";
   return "agent";
 }
 
@@ -565,7 +566,7 @@ function logEvent(e) {
 function dotClassFor(e) {
   if (e.type === "denied" || e.type === "error") return "critical";
   if (e.type === "approval_requested" || e.type === "approval_required") return "warning";
-  if (e.type === "refund_issued" || e.type === "scale_applied" || e.type === "approval_granted") return "good";
+  if (e.type === "refund_issued" || e.type === "scale_applied" || e.type === "approval_granted" || e.type === "order_lookup") return "good";
   return "neutral";
 }
 
@@ -818,7 +819,7 @@ function hopPath(events) {
   // its pulse through Gateway/OPA cards would visually contradict beat 1's
   // entire point (this agent has no verification layer at all).
   if (state.agent === "insecure") {
-    if (events.some((e) => ["refund_issued", "scale_applied", "scope_violation"].includes(e.type))
+    if (events.some((e) => ["refund_issued", "scale_applied", "scope_violation", "order_lookup"].includes(e.type))
         || deniedResources.length) path.push("database");
     return path;
   }
@@ -830,7 +831,7 @@ function hopPath(events) {
   path.push("envoy-gateway"); // reached the gateway, JWT accepted
   path.push("opa-policy"); // OPA evaluated the request either way (allow or deny)
   if (events.some((e) => e.type === "approval_requested" || e.type === "approval_granted")) path.push("approval-card");
-  if (events.some((e) => ["refund_issued", "scale_applied", "scope_violation"].includes(e.type))
+  if (events.some((e) => ["refund_issued", "scale_applied", "scope_violation", "order_lookup"].includes(e.type))
       || deniedResources.some((r) => r !== "identity" && r !== "policy")) path.push("database");
   return path;
 }

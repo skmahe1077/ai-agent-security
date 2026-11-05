@@ -58,6 +58,10 @@ def lookup_order(order_id: int, requester_customer_id: int, spiffe_id: str, sett
         })
         return "I can only look up your own orders.", events
 
+    events.append({
+        "type": "order_lookup", "order_id": order_id,
+        "message": f"looked up order #{order_id}",
+    })
     return (
         f"Order #{row['order_id']}: {row['product_name']}, "
         f"£{row['total_pence']/100:.2f}, status: {row['status']}."

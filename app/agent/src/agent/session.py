@@ -201,7 +201,10 @@ class StaticDBSession:
         return (
             f"Order #{row['order_id']}: {row['product_name']}, "
             f"£{row['total_pence']/100:.2f}, status: {row['status']}."
-        ), []
+        ), [{
+            "type": "order_lookup", "order_id": order_id,
+            "message": f"looked up order #{order_id} -- no ownership check, no identity",
+        }]
 
     def issue_refund(self, order_id: int, reason: str, customer_id: int, enforce_ownership: bool,
                       issued_by: str, approved_by: str | None = None,
