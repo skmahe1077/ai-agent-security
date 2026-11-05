@@ -470,7 +470,13 @@ function switchTab(name) {
   $("tab-flow").classList.toggle("hidden", name !== "flow");
 }
 $("tab-btn-shop").addEventListener("click", () => switchTab("shop"));
-$("tab-btn-flow").addEventListener("click", () => switchTab("flow"));
+// Opens in a new browser tab instead of switching in place -- the
+// Agentic Workflow panel is the thing shown live on stage/projector
+// while the Shop tab stays up on the presenter's own screen, so the two
+// need to be two actual tabs, not one view toggling the other away.
+// ?tab=flow (read in init() below) makes the new tab land directly on
+// the Agentic Workflow view instead of defaulting to Shop.
+$("tab-btn-flow").addEventListener("click", () => window.open("?tab=flow", "_blank"));
 
 // ---------- Agentic Workflow: stage graph + order history ----------
 
@@ -1074,6 +1080,7 @@ setInterval(pollState, 4000);
 
 (async function init() {
   buildStageGraphDOM();
+  if (new URLSearchParams(location.search).get("tab") === "flow") switchTab("flow");
   renderSuggestions();
   await loadCustomers();
   await loadProducts();
