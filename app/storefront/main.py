@@ -183,7 +183,7 @@ def api_chat(req: ChatRequest):
 # and recorded in the refunds row, not cryptographically verified. Say so
 # plainly if asked -- it's an honest simplification now that Vault is
 # gone, not a hidden one.
-_HUMAN_TOKEN_TTL_SECONDS = 1800  # 30 minutes -- long enough for a rehearsal, short enough to force a fresh human-approval-login before the real talk
+_HUMAN_TOKEN_TTL_SECONDS = 3600  # 60 minutes -- long enough for a rehearsal, short enough to force a fresh human-approval-login before the real talk
 _human_token: dict | None = None  # {display_name, cached_at}
 
 

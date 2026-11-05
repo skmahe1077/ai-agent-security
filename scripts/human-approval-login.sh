@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run ONCE before a demo window, in the green room. Declares "a human is
-# present for the next 30 minutes, call them X" to the storefront -- NOT a
+# present for the next 60 minutes, call them X" to the storefront -- NOT a
 # real IdP login, and NOT cryptographically verified in this build (no
 # Vault OBO here -- see app/storefront/static/index.html's comment on the
 # approval card for the honest version of what this does and doesn't
@@ -21,5 +21,5 @@ resp="$(curl -s -X POST "$STOREFRONT_URL/api/admin/human-token" \
   -d "$(python3 -c 'import json,sys; print(json.dumps({"display_name": sys.argv[1]}))' "$name")")"
 
 echo "$resp"
-log "cached. Approve as '$name' is live in the Agentic Workflow for the next 30 minutes."
+log "cached. Approve as '$name' is live in the Agentic Workflow for the next 60 minutes."
 warn "re-run this script if the demo runs long -- the cache expires, and Approve will show as disabled once it does."

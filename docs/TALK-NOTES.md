@@ -64,7 +64,7 @@ Switch the widget to `agent-secure`.
 ## Beat 3 -- policy on every call, and human intent (~4 min)
 
 **Setup, before walking on stage:** `bash scripts/human-approval-login.sh "<your name>"`. Caches your
-name as the approver for the next 30 minutes -- NOT a real IdP login. If skipped, the Approve
+name as the approver for the next 60 minutes -- NOT a real IdP login. If skipped, the Approve
 button is disabled with an explicit reason, not a silent failure.
 
 **Presenter does:**
