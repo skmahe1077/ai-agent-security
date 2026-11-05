@@ -115,6 +115,25 @@ for f in "$CRD_DIR"/*.yaml; do
 done
 rm -rf "$CRD_DIR"
 
+# Envoy Gateway's controller checks whether the SecurityPolicy CRD exists
+# exactly ONCE, at its own startup, to decide whether to even watch that
+# resource type -- and it had already started (via the envoy-gateway-
+# controller Application, synced earlier in Phase D) before this CRD
+# bootstrap ran, so it found the CRD missing and permanently disabled its
+# SecurityPolicy watch for the rest of that process's life ("SecurityPolicy
+# CRD not found, skipping SecurityPolicy watch" in its own logs). The
+# SecurityPolicy resource (JWT validation + extAuth to OPA) then synced
+# fine and showed Accepted/Synced -- ArgoCD and the Gateway API status both
+# looked healthy -- but NONE of it ever reached the live Envoy listener:
+# confirmed live that an unauthenticated call to /tools/lookup_order got a
+# plain 422 straight from mahi-tools, not a 401/403, meaning the gateway
+# was wide open with no indication anything was wrong short of inspecting
+# the proxy's own http_filters config directly. Restarting the controller
+# here, now that its CRDs genuinely exist, makes it re-check and start
+# watching for real.
+kubectl -n envoy-gateway-system rollout restart deployment/envoy-gateway
+kubectl -n envoy-gateway-system rollout status deployment/envoy-gateway --timeout=120s
+
 # Every Application that owns one of these charts already attempted (and
 # failed) its first sync before these CRDs existed. selfHeal=true means
 # ArgoCD will eventually notice and retry on its own, but only on its
@@ -134,8 +153,8 @@ wait_for_resource statefulset spire-server spire-mgmt 300
 kubectl -n spire-mgmt rollout status statefulset/spire-server --timeout=300s
 wait_for_resource daemonset spire-agent spire-mgmt 60
 kubectl -n spire-mgmt rollout status daemonset/spire-agent --timeout=300s
-wait_for_resource deployment cnpg-cloudnative-pg cnpg-system 300
-kubectl -n cnpg-system rollout status deployment/cnpg-cloudnative-pg --timeout=300s
+wait_for_resource deployment cloudnative-pg-operator cnpg-system 300
+kubectl -n cnpg-system rollout status deployment/cloudnative-pg-operator --timeout=300s
 wait_for_resource deployment kyverno-admission-controller kyverno 300
 kubectl -n kyverno rollout status deployment/kyverno-admission-controller --timeout=300s
 wait_for_resource deployment envoy-gateway envoy-gateway-system 300

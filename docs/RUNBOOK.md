@@ -131,6 +131,33 @@ piece by piece. The third was found tearing the stack down afterward.
     runs, not after, since by the time terraform reports the error the cluster that could otherwise
     clean these up from inside Kubernetes is already gone.
 
+## Confirmed gotchas (found re-provisioning from scratch, 2026-11-05)
+
+11. **The CloudNativePG operator Deployment is named `cloudnative-pg-operator`, not
+    `cnpg-cloudnative-pg`** -- `scripts/01-provision.sh`'s own wait step used the wrong name and
+    aborted with a false-negative "never appeared" error after waiting the full 300s, even though
+    the operator was actually up and healthy the whole time. **Fixed**: corrected the name in both
+    `wait_for_resource` and the matching `kubectl rollout status` call.
+12. **The gateway was silently wide open for the first ~25 minutes of this run** -- the
+    unauthenticated-call check in `scripts/03-verify.sh` failed, and manually reproducing it got a
+    plain `422` straight from mahi-tools itself (a FastAPI validation error), not a `401`/`403`
+    from Envoy Gateway. Root cause: Envoy Gateway's controller checks whether the `SecurityPolicy`
+    CRD exists exactly ONCE, at its own startup -- and it had already started (via the
+    `envoy-gateway-controller` Application, synced in Phase D) before Phase D.5 installed that CRD,
+    so it logged `"SecurityPolicy CRD not found, skipping SecurityPolicy watch"` and never watched
+    that resource type again for the rest of its process life. The `SecurityPolicy` itself synced
+    fine and showed `Accepted`/`Synced` in both ArgoCD and its own Gateway API status -- everything
+    LOOKED healthy -- but confirmed directly against the live Envoy proxy's own admin API
+    (`/config_dump`) that its listener's `http_filters` list contained only `envoy.filters.http.
+    router`, no `jwt_authn`, no `ext_authz`, at all. Every tool call from every agent would have
+    gone straight through to mahi-tools with zero identity or policy enforcement for as long as
+    that controller pod kept running, with nothing in `kubectl get application`/`securitypolicy`
+    status to suggest it. **Fixed**: `scripts/01-provision.sh`'s Phase D.5 now restarts
+    `deployment/envoy-gateway` immediately after installing its CRDs, forcing it to re-check and
+    start watching `SecurityPolicy` for real. `scripts/03-verify.sh`'s unauthenticated-call check
+    is what caught this -- a direct argument for never skipping Phase G on a live rehearsal, even
+    when every ArgoCD Application reports Synced/Healthy.
+
 ## Provisioning order, and why it's still phased
 
 Terraform only needs two applies, not one, for a specific reason: the
