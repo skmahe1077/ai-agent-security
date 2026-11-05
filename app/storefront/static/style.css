@@ -122,12 +122,19 @@ select, input[type="text"] {
    panel shown live on stage. Matches the Shop tab's own container cap
    (.layout's max-width) rather than a separate narrower one.
 
-   Left-aligned, not centered, with a right margin reserving the chat
-   widget's own footprint (.chat-widget: 360px wide + 24px inset) -- the
-   chat widget is position:fixed against the viewport, so opening it while
-   this panel was centered could cover its rightmost stage column. Left-
-   aligning plus the reserved margin keeps the whole panel clear of it. */
-#tab-flow.panel { max-width: 1400px; margin: 0; margin-right: 400px; }
+   Same width as before -- only THIS tab is pulled left, not .layout
+   itself (the Shop tab stays centered). The chat widget is
+   position:fixed against the viewport's right edge; on a centered
+   1400px-max .layout there wasn't reliably enough margin on wide screens
+   to clear it. The negative margin-left cancels out exactly what
+   .layout's own centering adds on screens wider than 1400px (0 on
+   narrower screens, where .layout isn't inset from the viewport edge
+   anyway), so this panel uses that dead space instead of shrinking. */
+#tab-flow.panel {
+  max-width: 1400px;
+  margin-left: calc(-1 * max(0px, (100vw - 1400px) / 2));
+  margin-right: 0;
+}
 
 .demo-controls {
   display: flex;
