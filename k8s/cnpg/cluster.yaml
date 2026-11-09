@@ -60,7 +60,6 @@ spec:
         connectionLimit: 5
         inRoles:
           - mahi_order_grp
-          - mahi_refund_grp
         passwordSecret:
           name: agent-order-db-creds
       - name: agent_refund_login
