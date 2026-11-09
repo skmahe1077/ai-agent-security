@@ -49,23 +49,40 @@ done
 # above -- terraform never manages it, so it (and the security groups the
 # same controller creates for it) survive `terraform destroy` as orphans
 # and their ENIs block the VPC's subnets, then the security groups
-# themselves block the VPC, from deleting at all. Confirmed the hard way:
-# a first `terraform destroy` got through EKS/ALB/nodes cleanly and then
-# failed at the VPC/subnet step with DependencyViolation, twice in a row,
-# once for the subnets' leftover NLB ENIs and once more for the VPC's
-# leftover security groups once those ENIs were gone. Sweep both, tagged
-# by the standard `kubernetes.io/cluster/<name>=owned` convention every
-# Kubernetes AWS cloud-provider/load-balancer controller uses, BEFORE
-# `terraform destroy` runs -- not after, since by the time terraform
-# reports the error the EKS cluster (and anything that could clean these
-# up from inside Kubernetes) is already gone.
+# themselves block the VPC, from deleting at all. Confirmed the hard way,
+# TWICE on two separate teardowns:
+#
+# Run 1: a first `terraform destroy` got through EKS/ALB/nodes cleanly and
+# then failed at the VPC/subnet step with DependencyViolation, once for
+# the subnets' leftover NLB ENIs and once more for the VPC's leftover
+# security groups once those ENIs were gone. Fixed by sweeping both,
+# tagged `kubernetes.io/cluster/<name>=owned`, before `terraform destroy`
+# runs -- the legacy tag convention the in-tree cloud provider and
+# Ingress-provisioned AWS Load Balancer Controller resources use.
+#
+# Run 2: the SAME failure recurred even with that sweep in place --
+# confirmed live that it deleted 2 security groups (real resources, tag
+# matched) but missed 2 NLBs and 3 MORE security groups entirely, which
+# then blocked `terraform destroy` exactly as before. Root cause: the AWS
+# Load Balancer Controller uses a SECOND, different tag convention,
+# `elbv2.k8s.aws/cluster=<name>` (no `owned`/`shared` value), for anything
+# it provisions from a Service type=LoadBalancer rather than an Ingress --
+# which is exactly how Envoy Gateway's own Gateway resource gets its NLB.
+# Both conventions coexist on the same cluster depending on which
+# Kubernetes resource triggered the provisioning, so both are swept below.
 log "deleting any load balancers an in-cluster controller provisioned for this EKS cluster (not just the storefront's ALB)"
 CLUSTER_NAME="$(terraform -chdir="$TF_DIR" output -raw eks_cluster_name 2>/dev/null || true)"
 if [ -n "$CLUSTER_NAME" ]; then
-  lb_arns="$(aws resourcegroupstaggingapi get-resources \
-    --resource-type-filters elasticloadbalancing:loadbalancer \
-    --tag-filters "Key=kubernetes.io/cluster/${CLUSTER_NAME},Values=owned" \
-    --query 'ResourceTagMappingList[].ResourceARN' --output text 2>/dev/null || true)"
+  lb_arns="$({
+    aws resourcegroupstaggingapi get-resources \
+      --resource-type-filters elasticloadbalancing:loadbalancer \
+      --tag-filters "Key=kubernetes.io/cluster/${CLUSTER_NAME},Values=owned" \
+      --query 'ResourceTagMappingList[].ResourceARN' --output text 2>/dev/null
+    aws resourcegroupstaggingapi get-resources \
+      --resource-type-filters elasticloadbalancing:loadbalancer \
+      --tag-filters "Key=elbv2.k8s.aws/cluster,Values=${CLUSTER_NAME}" \
+      --query 'ResourceTagMappingList[].ResourceARN' --output text 2>/dev/null
+  } | tr '\t' '\n' | sort -u)"
   for arn in $lb_arns; do
     warn "deleting load balancer $arn (provisioned by an in-cluster controller, not terraform)"
     aws elbv2 delete-load-balancer --load-balancer-arn "$arn" 2>&1 || true
@@ -73,8 +90,12 @@ if [ -n "$CLUSTER_NAME" ]; then
   if [ -n "$lb_arns" ]; then
     log "waiting for their ENIs to clear before touching security groups"
     for i in $(seq 1 30); do
+      # Matched by description, not tag -- every ENI an ELB/NLB owns is
+      # named "ELB ..." regardless of which tag convention provisioned
+      # the load balancer itself, so this catches both without needing
+      # to enumerate tag conventions a second time.
       remaining="$(aws ec2 describe-network-interfaces \
-        --filters "Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=owned" \
+        --filters "Name=description,Values=ELB*" \
         --query 'length(NetworkInterfaces)' --output text 2>/dev/null || echo 0)"
       [ "$remaining" = "0" ] && break
       sleep 10
@@ -82,15 +103,20 @@ if [ -n "$CLUSTER_NAME" ]; then
   fi
 
   log "deleting any security groups an in-cluster controller provisioned for this EKS cluster"
-  sg_ids="$(aws ec2 describe-security-groups \
-    --filters "Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=owned" \
-    --query 'SecurityGroups[].GroupId' --output text 2>/dev/null || true)"
+  sg_ids="$({
+    aws ec2 describe-security-groups \
+      --filters "Name=tag:kubernetes.io/cluster/${CLUSTER_NAME},Values=owned" \
+      --query 'SecurityGroups[].GroupId' --output text 2>/dev/null
+    aws ec2 describe-security-groups \
+      --filters "Name=tag:elbv2.k8s.aws/cluster,Values=${CLUSTER_NAME}" \
+      --query 'SecurityGroups[].GroupId' --output text 2>/dev/null
+  } | tr '\t' '\n' | sort -u)"
   for sg in $sg_ids; do
     warn "deleting security group $sg (provisioned by an in-cluster controller, not terraform)"
     aws ec2 delete-security-group --group-id "$sg" 2>&1 || true
   done
 else
-  warn "couldn't read eks_cluster_name from terraform output -- skipping the tagged load-balancer/security-group sweep. If 'terraform destroy' below fails on the VPC or its subnets with DependencyViolation, check for orphaned 'k8s-*' load balancers and security groups by hand."
+  warn "couldn't read eks_cluster_name from terraform output -- skipping the tagged load-balancer/security-group sweep. If 'terraform destroy' below fails on the VPC or its subnets with DependencyViolation, check for orphaned 'k8s-*' load balancers and security groups by hand (both the kubernetes.io/cluster/<name>=owned and elbv2.k8s.aws/cluster=<name> tag conventions)."
 fi
 
 log "deleting SPIRE's and CloudNativePG's PVCs"

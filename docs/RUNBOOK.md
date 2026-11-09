@@ -158,6 +158,24 @@ piece by piece. The third was found tearing the stack down afterward.
     is what caught this -- a direct argument for never skipping Phase G on a live rehearsal, even
     when every ArgoCD Application reports Synced/Healthy.
 
+## Confirmed gotchas (found tearing down a second time, 2026-11-06)
+
+13. **`destroy.sh`'s gotcha-#10 fix (the orphaned-NLB/security-group sweep) wasn't actually
+    enough** -- the exact same `terraform destroy` DependencyViolation on the VPC/subnet step
+    recurred on a later teardown, even with that sweep running. Confirmed live: it correctly found
+    and deleted 2 security groups, but missed 2 NLBs and 3 MORE security groups entirely, which
+    then blocked the VPC exactly as gotcha #10 described. Root cause: the AWS Load Balancer
+    Controller uses TWO different tag conventions depending on what triggered the provisioning --
+    `kubernetes.io/cluster/<name>=owned` (the legacy convention, used for the storefront's
+    Ingress-provisioned ALB and some of its resources) and a second, separate
+    `elbv2.k8s.aws/cluster=<name>` tag with no `owned`/`shared` value (used for anything
+    provisioned from a Service `type=LoadBalancer`, which is exactly how Envoy Gateway's own
+    `Gateway` resource gets its NLB and that NLB's own security groups). The sweep only checked
+    the first convention. **Fixed**: `scripts/destroy.sh` now checks both tag conventions for both
+    load balancers and security groups, and waits for ENIs by matching their `description` (every
+    ELB/NLB-owned ENI is named `ELB ...` regardless of which tag convention provisioned the load
+    balancer) instead of by a single tag filter that could miss some of them.
+
 ## Provisioning order, and why it's still phased
 
 Terraform only needs two applies, not one, for a specific reason: the
